@@ -65,3 +65,49 @@ Re-run this committed test against the final source commit's clean production
 build before final release acceptance. Other gates (combat spatial targeting,
 performance/soak, negative persistence cases, remaining reviewer findings and
 human-only pacing/fun validation) remain independent obligations.
+
+## Independent browser persistence matrix, 2026-11-01
+
+The parent reviewer added `tests/e2e/persistence.spec.ts` and ran it against the
+live implementation preview on port 5173. Both configured browser projects
+passed all three tests:
+
+| Browser | Viewport | Result | Runner duration |
+|---|---|---|---|
+| Chromium | 1664x936 | 3 passed | 4.8 minutes |
+| Firefox | 1280x720 | 3 passed | 7.9 minutes |
+
+These are working-tree development-preview results, **not an immutable
+production-artifact sign-off**. Re-run them with the final production build.
+The tests create the baseline expedition and saves through actual controls;
+they never create game state through a simulation API.
+
+- Nine invalid imports cover malformed JSON, unknown envelope/content versions,
+  incorrect checksum, nonfinite numeric input, duplicate crew identities,
+  broken room references, out-of-bounds health and the 1 MiB import limit.
+  Correct checksums are generated for invalid payload fixtures so those cases
+  exercise state validation rather than only checksum rejection. Each case
+  asserts explicit failure, byte-identical exported live state and preservation
+  of both known-good slots.
+- A deliberately corrupt primary slot produces a visible load error without
+  replacing the live run. Previous-slot recovery produces the same exported
+  expedition, remains paused, and preserves both the corrupt diagnostic bytes
+  and the good previous slot.
+- Browser Storage faults simulate quota exhaustion, missing read-back and
+  invalid read-back. Each asserts an explicit failed-save message, unchanged
+  exported live run and retention of the previous known-good bytes. Interrupted
+  primary writes also retain the prior primary.
+
+These bounded storage/import fixtures are intentionally different from the
+fixture-free full Expedition journey. They do not prove the entire combat
+save-continuation matrix or browser soak.
+
+## Hosted CI availability
+
+The GitHub Actions run for `8368d47` failed before executing any workflow steps.
+Its check annotation states: "GitHub Actions hosted runners are disabled for
+this repository. For more information please contact your GitHub Enterprise
+Administrator." [Run 41372877014](https://github.com/miplese_microsoft/starship/actions/runs/41372877014)
+therefore supplies no build or test result. Local results above are reported
+independently; unavailable hosted CI is not a passing check or a demonstrated
+game-code failure.

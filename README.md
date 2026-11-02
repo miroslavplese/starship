@@ -28,6 +28,9 @@ npm run test:e2e
 controls, including freight, all three coordinates, survey/fuel preparation,
 save/continue, guardian passage, archive extraction and a persisted victory.
 It uses the player's safe-speed control, not hidden state or fixture saves.
+`tests/e2e/persistence.spec.ts` uses UI-created saves to verify rejected imports,
+previous-slot recovery, quota failures and failed read-back without losing the
+live expedition or claiming a successful save.
 For parallel worktrees, set `STARSHIP_TEST_PORT` to an unused preview port.
 See [browser journey evidence](docs/expedition-browser-evidence.md) for measured
 results and their limits.
