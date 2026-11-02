@@ -96,6 +96,10 @@ interrupted primary write, read-back failure and invalid read-back. Assert
 original live game and prior known-good slot retained, explicit error, never a
 false success. Verify previous-slot recovery and export without deleting bad
 bytes. Latest plus previous slot must fit comfortably in typical 5 MiB quota.
+After recovery, continue and save successfully with the previous good slot and
+quarantined corrupt bytes retained. A different corrupt primary must not
+silently replace an occupied diagnostic slot; verify export and explicitly
+confirmed discard, including preservation of any valid primary/previous slot.
 
 ## 4. Production-control browser scenarios
 

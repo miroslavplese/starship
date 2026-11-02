@@ -188,6 +188,14 @@ cargo ID is a unique flight recorder: its referenced location must be an actual
 derelict and its quantity must be one. Mission recovery and persistence share
 the same recorder-ID constructor; a matching prefix alone is not validation.
 
+After previous-slot recovery, saving quarantines the corrupt primary before
+replacing it and leaves the known-good previous slot intact. One diagnostic slot
+retains at most 1 MiB and never overwrites different corrupt bytes. Diagnostics
+export includes raw primary, previous and quarantined bytes. Explicitly
+confirmed discard removes only an invalid primary and the diagnostic slot,
+never a valid primary or the previous slot; storage/read-back failures are
+reported rather than treated as success.
+
 Audio adapter consumes events, never causes simulation effects. It starts only
 after a user gesture and supports master/effects volume and mute. Synthesized
 original cues can cover charge, shot, hit, breach, oxygen, jump and discovery.

@@ -144,14 +144,53 @@ export function decode(text: string): GameState {
 }
 export const SAVE_KEY = 'starship.save.v1';
 export const PREVIOUS_KEY = 'starship.previous.v1';
-export function save(s: GameState, storage: Storage = localStorage): Result {
+export const CORRUPT_KEY = 'starship.corrupt.v1';
+export type SaveResult = Result & { quarantined?: boolean };
+
+function decodeError(text: string): string | null {
+  try { decode(text); return null; }
+  catch (e) { return e instanceof Error ? e.message : String(e); }
+}
+
+export function recoveryDiagnostics(storage: Storage = localStorage): string {
+  const primary = storage.getItem(SAVE_KEY), previous = storage.getItem(PREVIOUS_KEY), quarantined = storage.getItem(CORRUPT_KEY);
+  return JSON.stringify({
+    schema: 1, primary, previous, quarantined,
+    primaryError: primary === null ? null : decodeError(primary),
+    quarantinedError: quarantined === null ? null : decodeError(quarantined),
+  }, null, 2);
+}
+
+export function discardCorruptSaves(storage: Storage = localStorage): Result {
+  try {
+    const primary = storage.getItem(SAVE_KEY);
+    const corruptPrimary = primary !== null && decodeError(primary) !== null;
+    if (corruptPrimary) storage.removeItem(SAVE_KEY);
+    storage.removeItem(CORRUPT_KEY);
+    if ((corruptPrimary && storage.getItem(SAVE_KEY) !== null) || storage.getItem(CORRUPT_KEY) !== null) throw new Error('Corrupt saved bytes could not be removed.');
+    return { ok: true };
+  } catch (e) { return { ok: false, message: `Diagnostic discard failed: ${e instanceof Error ? e.message : String(e)}. Export recovery diagnostics before retrying.` }; }
+}
+
+export function save(s: GameState, storage: Storage = localStorage): SaveResult {
   try {
     const bytes = encode(s), prior = storage.getItem(SAVE_KEY);
-    if (prior) { decode(prior); storage.setItem(PREVIOUS_KEY, prior); }
+    let quarantined = false;
+    if (prior !== null) {
+      if (decodeError(prior) === null) storage.setItem(PREVIOUS_KEY, prior);
+      else {
+        if (prior.length > 1048576) throw new Error('Corrupt primary exceeds the 1 MiB diagnostic limit. Export recovery diagnostics and confirm discard before saving.');
+        const retained = storage.getItem(CORRUPT_KEY);
+        if (retained !== null && retained !== prior) throw new Error('A different corrupt save is already retained. Export recovery diagnostics and confirm discard before saving.');
+        storage.setItem(CORRUPT_KEY, prior);
+        if (storage.getItem(CORRUPT_KEY) !== prior) throw new Error('Corrupt-save diagnostic read-back failed; primary retained.');
+        quarantined = true;
+      }
+    }
     storage.setItem(SAVE_KEY, bytes);
     const readback = storage.getItem(SAVE_KEY);
     if (readback !== bytes) throw new Error('Save read-back failed; previous slot retained.');
     decode(readback);
-    return { ok: true };
+    return quarantined ? { ok: true, quarantined: true } : { ok: true };
   } catch (e) { return { ok: false, message: `Save failed: ${e instanceof Error ? e.message : String(e)}. Export your run or recover the previous slot.` }; }
 }
