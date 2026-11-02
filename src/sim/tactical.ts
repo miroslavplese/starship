@@ -491,12 +491,13 @@ function emergencies(state: GameState, ship: Ship): void {
 
 function crewTasks(state: GameState): void {
   const combat = new Map<string, number>();
-  for (const crew of ordered(state.crew)) {
+  const crewOrder = ordered(state.crew);
+  for (const crew of crewOrder) {
     if (crew.health <= 0) continue;
     const ship = state.ships.find(candidate => candidate.id === crew.shipId && candidate.hull > 0);
     const room = ship?.rooms.find(candidate => candidate.id === crew.room);
     if (!ship || !room || ship.doctrine === 'withdrawn') continue;
-    const defenders = ordered(state.crew).filter(candidate => candidate.health > 0 && candidate.shipId === ship.id && candidate.room === room.id && candidate.home !== crew.home);
+    const defenders = crewOrder.filter(candidate => candidate.health > 0 && candidate.shipId === ship.id && candidate.room === room.id && candidate.home !== crew.home);
     if (defenders.length && (ship.id === player(state).id || state.encounter === 'hostile' || state.encounter === 'derelict')
       && (crew.task === 'fight' || crew.home === ship.id || defenders.some(defender => defender.task === 'fight'))) {
       const target = defenders[0];

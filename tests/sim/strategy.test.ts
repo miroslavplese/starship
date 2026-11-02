@@ -12,6 +12,21 @@ function fuel(s: GameState) { while (s.ships[0].fuel < s.ships[0].maxFuel) issue
 function jump(s: GameState, destination: string) { run(s, 600); issue(s, { type: 'travel', destination, system: true, confirm: true }); run(s, 100); }
 
 describe('strategic rules', () => {
+  it.each(['missing stock', 'unknown stock', 'missing observed price', 'unknown price'])('rejects imported market %s before stock regeneration can corrupt the run', kind => {
+    const s = createGame(12345), market = s.markets[0];
+    if (kind === 'missing stock') delete market.stock.food;
+    if (kind === 'unknown stock') market.stock['unknown-good'] = 1;
+    if (kind === 'missing observed price') delete market.prices.food;
+    if (kind === 'unknown price') market.prices['unknown-good'] = 1;
+    expect(() => decode(encode(s))).toThrow('Invalid authored market commodity records.');
+  });
+  it.each(['constructor', 'toString', '__proto__'])('rejects inherited fitting ID %s atomically, including a queued import', module => {
+    const s = createGame(12345), before = JSON.stringify(s);
+    expect(command(s, { type: 'upgrade', module }).ok).toBe(false);
+    expect(JSON.stringify(s)).toBe(before);
+    s.queue.push({ type: 'upgrade', module }); s.queueMeta!.push({ tick: s.tick, sequence: ++s.sequence });
+    expect(() => decode(encode(s))).toThrow('Unknown queued upgrade.');
+  });
   it('creates a connected objective graph and exact sandbox minimum across 100 seeds', () => {
     for (let seed = 0; seed < 100; seed++) {
       const { region, contracts } = generateRegion(seed), reached = new Set(['s0']), work = ['s0'];

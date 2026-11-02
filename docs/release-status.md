@@ -80,7 +80,7 @@ gave **ACCEPT within their retained findings scopes**, after corrections:
 | Game quality | Field contract claims exposed at nonstation destinations; immediate terminal persistence excluding training; investigation UI distinguishes assigned relay from corroborated evidence. |
 
 These are role-specialized AI reviews, not human playtests or blanket release
-approval. The current clean suite has **192 passing tests**. Chromium and Firefox
+approval. The current clean suite has **199 passing tests**. Chromium and Firefox
 production controls pass spatial targeting directly over an enemy crew sprite,
 combat save/reload, door lock/unlock, reversible-drill save isolation,
 abandonment/reload, commerce, freight and surveying. Chromium also passes
@@ -114,8 +114,8 @@ Direct3D11 vs_5_0 ps_5_0, D3D11)`. At 1280x720, Auto/100% resolution:
 
 | Workload | Render submissions/sec | Display rAF/sec | p95 frame interval | Result |
 |---|---:|---:|---:|---|
-| Actual generated battle, variable projectile count | 85.67 | 85.75 | 12.2 ms | PASS 60 FPS / 20 ms |
-| Validated synthetic 2 ships / 6 crew / 32 ion projectiles; native guns removed; no in-window impacts | 85.12 | 85.18 | 12.2 ms | PASS 60 FPS / 20 ms |
+| Actual generated battle, variable projectile count | 85.56 | 85.62 | 12.2 ms | PASS 60 FPS / 20 ms |
+| Validated synthetic 2 ships / 6 crew / 32 ion projectiles; native guns removed; no in-window impacts | 85.62 | 85.68 | 12.2 ms | PASS 60 FPS / 20 ms |
 
 Both use 15-second measured windows after warm-up. Submission counters do not
 claim GPU-completed frames. Software fallback remains explicitly below target.
@@ -125,13 +125,20 @@ Isolated Node 20.19.2 simulation measurements, 40 warm-up plus 400 measured
 
 | Workload before every tick | p50 | p95 | Limit/result |
 |---|---:|---:|---|
-| 2 ships / 6 living crew / 32 projectiles / 4 fires / 4 leaks | 0.3591 ms | 0.9653 ms | <5 ms PASS |
-| 4 ships / 32 living crew / 256 projectiles / 8 fires / 8 leaks | 0.7798 ms | 2.2107 ms | <15 ms PASS |
+| 2 ships / 6 living crew / 32 projectiles / 4 fires / 4 leaks | 0.3252 ms | 0.9968 ms | <5 ms PASS |
+| 4 ships / 32 living crew / 256 projectiles / 8 fires / 8 leaks | 0.4976 ms | 2.4719 ms | <15 ms PASS |
 
 These are disclosed synthetic fixtures replenishing ion projectiles and hazard
 floors, with native guns removed. AI, impacts, atmosphere and physical tasks
 execute normally. Invariant/save checks are outside the timed tick. Earlier
 contended-host samples failed; these isolated results do not erase them.
+A pre-optimization final sample also failed stress at 27.7984 ms p95
+(271.1944 ms maximum). Hoisting the identical ordered crew list out of the
+per-crew task loop removes redundant sorting without changing task/combat
+order. The subsequent exact workloads pass twice; the table uses the final
+source sample, not the fastest sample. Baseline/stress p95 changes from the
+earlier isolated milestone are approximately +3.3%/+11.8%, below the 20%
+regression trigger. Large shared-host wall-time spikes remain disclosed.
 
 The deterministic survival soak passed two **72,000-tick** runs (144,000 checked
 steps total), 12 save/load round-trips, zero resets. This is safe-station
@@ -176,14 +183,29 @@ than only the last event in a batch. WebAudio adapter tests do not claim a
 human listening session.
 
 The final candidate's strict TypeScript and production build pass; eight
-retreat/stranding and six audio regressions join the original 165 tests and
-13 content-reference/quarantine regressions. Both browsers pass the actual
+retreat/stranding, six audio and seven queued-fitting/market-record regressions
+join the original 165 tests and 13 content-reference/quarantine regressions.
+Prototype-named fittings are rejected both during import and at the command
+gateway; incomplete stock/observed-price records cannot become nonfinite at
+the next economy tick. Both browsers pass the actual
 stranded-team/save/load/priced-recovery controls and compact physical-emergency
 drill. A contended Chromium first-battle driver lost while issuing orders live;
 the corrected driver uses the game's tactical pause and restores all three
 weapon allocations, rather than allowing automation latency to continue the
-fight unattended. Its Chromium rerun passes. Final combined browser reruns are
-recorded separately; that failed run is not erased.
+fight unattended. Its Chromium rerun passes. The combined ec8f04c browser matrix passes
+**15 tests with one intentional Firefox offline-cache skip** in 7.8 minutes;
+the failed earlier run is not erased. The independent coordinator's ec8f04c
+matrix passes all **14 tests** in 6.0 minutes, including fixture-free full
+victory, corrupt-save recovery/continued-save/export/discard and both actual
+missile-hull and oxygen-crew defeat/debrief/reload scenarios. Final guard-only
+artifact reruns are recorded in the independent browser evidence.
+
+The final production bundle is `index-BIF077lt.js`, SHA256
+`4F8D3280BF828848B204E64803F585CE2A216A5F03798CEBC29B41A2BD82C03A`;
+CSS `index-CXeRX3E1.css`, SHA256
+`8C83B6D6627EBD493518DB33C86EE88B86AAE435AAC0525C47E1891CB5201FE3`.
+Both final hardware measurements above use this exact build, verified Intel
+adapter and 100% Auto resolution. Offline cache is `starship-4e71928d8add280e`.
 
 ## External validation limitations
 
@@ -207,14 +229,14 @@ supersede an unmet human, visual or performance gate.
 
 | IDs | Implementation and evidence | Residual acceptance |
 |---|---|---|
-| R01 | `game.ts`, controller terminal persistence; legal-command victory and real-control full Expedition/debrief, abandonment/reload; simulation defeat | Full browser defeat/recovery matrix pending |
+| R01 | `game.ts`, controller terminal persistence; real-control full victory, abandonment/reload, actual missile hull and oxygen crew defeats with terminal reload in both browsers; independent browser evidence | Bounded scenario coverage, not every possible combined failure |
 | R02 | Active simulation minutes shown separately in debrief | 90–180 minute human pacing unverified |
 | R03–R04 | `game.ts` travel, functional sensors, passive/active/probe/physical/purchased knowledge; strategic regressions and full browser route | Exhaustive sensor-jam browser matrix pending |
 | R05 | `expedition.ts` seven survey types/values, one-time records/sales and permanent objective knowledge; mission/strategy tests | All-type production-control tour pending |
 | R06 | Four risk bands, truthful station availability, incoming-contact choice, finite fuel/rescue; full route evasion/refueling | Human preparation clarity unverified |
 | R07–R09 | `region.ts` six economies/ten goods, integrated marginal quotes, bounded dynamic events/stock, mass/volume/reservations/stale snapshots; 100-seed graph and reversal tests | Extended balance scenarios pending |
 | R10–R12d | `missions.ts`, customs gateway, faction/fitting gates and eleven distinct mission categories; 38 mission tests plus actual freight/field claim UI | Full browser branch matrix pending |
-| R13–R15 | Physical search/engineering/recall, unique compartment supplies/logs/recorder/survivor/threat, persistent depletion, risk countdown and finite equipped mining; tactical/mission regressions | Complete browser recovery narrative pending |
+| R13–R15 | Physical search/engineering/recall, unique compartment outcomes, persistent depletion, risk countdown and mining; tactical/mission regressions plus both-browser stranded-team persistence/priced recovery | Exhaustive all-room/hazard combinations are not claimed |
 | R16–R20 | `ships.ts`, `validate.ts`, shared tactical rules, room graph, pressure/fire/breach/manning/skills/health; tactical tests, actual door/target controls and both-browser physical emergency chain | Extended mixed-hazard combinations remain bounded-test coverage, not exhaustive play |
 | R21 | Future-only extras not required; functioning minimal drones/tether are present for required EW/boarding | No cloaking/shield-modulation claim |
 | R22–R27 | `tactical.ts` six weapon families, evasion/shields, paid directional attack/defense, EW variants, physical boarding/combat/sabotage/capture, shared-rule doctrines and one-time rewards; tactical regressions | Comprehensive UI counterplay coverage pending |
@@ -222,9 +244,9 @@ supersede an unmet human, visual or performance gate.
 | R30–R31 | Seeded routes/markets/contracts/rewards/crew/loadouts; 100-seed structural checks; ten full legal victories per distinct fitted career | Human balance unverified |
 | R32–R33 | One complete player ship; no meta unlock or permanent stat-bonus system | Additional classes/meta are not claimed |
 | R34–R35 | Standalone typed 20 Hz simulation, React/Pixi/event separation, frame-subdivision/command-replay/combat-continuation tests, strict build; measured tick/render and bounded soak results above | Software fallback misses rendering target |
-| R36 | Original generated hull/backgrounds and procedural room/crew/effect graphics; provenance `public/art/manifest.json`; actual screenshots inspected | Final all-category visual acceptance pending |
+| R36 | Original art/provenance; six full-resolution pristine/targeting/fire-breach screenshots at both resolutions, independently inspected against all eight categories with score 2 each; see browser evidence | Bounded visual assessment, not pixel-exact copying or exhaustive visual regression |
 | R37 | Synthesized event audio with mute/volume, restart/load reset and critical priority; six WebAudio lifecycle/frequency regressions; matching textual ship log | Human listening assessment not performed |
-| R38 | Actual spatial Laser/Ion targeting over hostile crew, live combat save/reload, prepared real-control first-battle win/reward/departure and both-browser physical emergency chain | Browser defeat branch remains separate from simulation defeat coverage |
+| R38 | Spatial Laser/Ion targeting over hostile crew, combat save/reload, prepared first-battle win/reward/departure, physical emergency chain and independent both-browser hull/crew defeat journeys | First-time human teaching/pacing remains unverified |
 | R39 | Exact first-system counts and ten goods across 100 seeds; real-control commerce/freight/survey | 20–30 minute first-time human sandbox evidence absent |
 | R40 | No manual flight, multiplayer, surface/MMO or cloud-account dependency | Implemented scope boundary |
 | R41 | Real ship emergencies, recall, convoy/cargo/customs and deep-space choices interact | Human emergent-story/opportunity-cost protocol pending |

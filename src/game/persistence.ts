@@ -90,10 +90,12 @@ function checksum(text: string): string {
 }
 export function validate(data: unknown): GameState {
   const s: GameState = schema.parse(data);
+  if (s.queue.some(command => command.type === 'upgrade' && !Object.hasOwn(UPGRADES, command.module))) throw new Error('Unknown queued upgrade.');
   const unique = (ids: string[]) => new Set(ids).size === ids.length;
   if (!unique(s.ships.map(x => x.id)) || !unique(s.crew.map(x => x.id)) || !unique(s.region.map(x => x.id)) || s.ships[0].id !== 'player' || s.ships[0].doctrine !== 'player') throw new Error('Duplicate or invalid entity identities.');
   const locations = s.region.flatMap(r => r.locations);
   const recorders = new Set(locations.filter(l => l.kind === 'derelict').map(l => recorderKey(l.id)));
+  if (s.markets.some(m => GOODS.some(g => !Object.hasOwn(m.stock, g.id) || m.observed >= 0 && !Object.hasOwn(m.prices, g.id)) || [...Object.keys(m.stock), ...Object.keys(m.prices)].some(id => !GOODS.some(g => g.id === id)))) throw new Error('Invalid authored market commodity records.');
   const sys = s.region.find(r => r.id === s.systemId);
   if (!sys || !sys.locations.some(l => l.id === s.locationId) || !unique(locations.map(l => l.id))) throw new Error('Invalid regional location references.');
   for (const sh of [...s.ships, ...Object.values(s.wrecks ?? {})]) {

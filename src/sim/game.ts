@@ -174,7 +174,7 @@ function applyCommand(s: GameState, c: Command): Result {
     return success;
   }
   if (c.type === 'upgrade') {
-    const u = UPGRADES[c.module];
+    const u = Object.hasOwn(UPGRADES, c.module) ? UPGRADES[c.module] : undefined;
     if (!u || loc.kind !== 'station' || s.travel) return reject('Select a valid station fitting.');
     const unavailable = fittingReason(s, c.module); if (unavailable) return reject(unavailable);
     if (p.modules.includes(c.module)) return reject('Module already installed.');
