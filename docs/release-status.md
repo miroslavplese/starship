@@ -11,6 +11,32 @@ pacing/fun gates marked **unverified**. This does not turn automated tests into
 human evidence, excuse engineering defects, or imply unrestricted acceptance.
 The engineering evidence and limitations below remain separate.
 
+## Personal-account publication, 2026-11-02
+
+The full 18-commit source history through
+`3c98d22fa51676dfbcde56bd46b2a239c6a00ad1` was copied without rewriting to the
+public [miroslavplese/starship](https://github.com/miroslavplese/starship)
+repository. The private work-account source remains intact as a backup; this
+was a copy migration, not a transfer or deletion. GitHub Pages uses the Actions
+deployment source and publishes at
+[https://miroslavplese.github.io/starship/](https://miroslavplese.github.io/starship/).
+
+The personal-account
+[Pages run](https://github.com/miroslavplese/starship/actions/runs/41545289678)
+successfully ran dependency installation, unit tests, the production build and
+deployment. The live entry page responded HTTP 200. This supersedes the
+work-account hosting blocker below, not the historical acceptance limitations.
+Human pacing/fun and the explicitly skipped Firefox offline case remain
+unverified.
+
+The first hosted
+[Expedition checks run](https://github.com/miroslavplese/starship/actions/runs/41545275441)
+failed during browser installation, before browser tests: `ubuntu-latest`
+selected Ubuntu 26.04, which the locked Playwright 1.56.1 does not support.
+The browser-check workflow now pins `ubuntu-24.04` rather than changing game
+behavior or updating the dependency tree. That failed run remains evidence,
+not a passing browser result.
+
 ## Clipped-panel border correction, 2026-11-02
 
 The shared 10px clipped frames now draw diagonal corner strokes instead of
@@ -251,14 +277,14 @@ adapter and 100% Auto resolution. Offline cache is `starship-4e71928d8add280e`.
 
 ## External validation limitations
 
-Hosted CI cannot run: GitHub's check annotation says **“GitHub Actions hosted
+On the original work-account repository, hosted CI could not run: GitHub's check annotation says **“GitHub Actions hosted
 runners are disabled for this repository”** before any workflow step executes.
 [Observed run](https://github.com/miplese_microsoft/starship/actions/runs/41372877014).
 This is not a successful CI result, nor an application test failure. Local
 test/build/browser evidence is recorded separately; administrator enablement
 is external to the game.
 
-### GitHub Pages preparation (not a live deployment)
+### Historical work-account Pages preparation (not a live deployment)
 
 The Pages build/deploy workflow is prepared, with Vite base-path-aware art,
 scripts, styles and service-worker registration. Offline cache lookup and
@@ -278,8 +304,9 @@ User, whose personal repositories cannot host Pages or use hosted Actions
 runners. [GitHub's Pages limits](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/github-pages-limits#limits-for-enterprise-managed-users)
 require an organization-owned repository and private publication for managed
 users. This is not a successful deployment or a live remote-play URL. Repository
-visibility/ownership has not changed; an approved eligible destination is still
-required.
+visibility/ownership had not changed at that checkpoint; an approved eligible
+destination was still required. The personal-account copy publication above
+supersedes this hosting blocker without changing the original repository.
 
 The requested critical consultation received an explicit delivery decision:
 "Given the current state, please authorize the delivery with the human-only

@@ -25,14 +25,14 @@ repository, enable **Settings > Pages > Source > GitHub Actions**, then push
 `main` or run **Deploy GitHub Pages** manually. The workflow reports the actual
 site URL; a successful source push alone does not mean the site is live.
 
-**Current hosting blocker:** GitHub rejected Pages enablement for this repository
-with HTTP 422, "Your current plan does not support GitHub Pages for this
-repository." Its owner is an Enterprise Managed User. Such accounts can publish
-Pages only from organization-owned repositories, and those sites are always
-private. See [GitHub's managed-user Pages limits](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/github-pages-limits#limits-for-enterprise-managed-users).
-No repository visibility change or transfer is performed automatically.
-An approved organization destination is needed for enterprise-private hosting;
-public Pages needs an eligible non-managed account/destination.
+**Play:** [STARSHIP on GitHub Pages](https://miroslavplese.github.io/starship/).
+The public source is [miroslavplese/starship](https://github.com/miroslavplese/starship).
+On 2026-11-02 the complete source history was copied to the personal account
+after the managed work account could not publish Pages. The private source
+repository remains intact as a backup. The personal-account
+[Pages deployment](https://github.com/miroslavplese/starship/actions/runs/41545289678)
+passed its unit tests, production build and deployment. Historical platform
+failures and acceptance limitations remain in the release-status ledger.
 
 To verify a project-path deployment locally:
 
@@ -115,8 +115,9 @@ Remove-Item Env:SOAK
 
 Verify the reported WebGL adapter rather than assuming headful hardware.
 Hardware and software results, synthetic workload counts and memory limits
-are recorded separately. Hosted CI is currently disabled by repository policy;
-local passing results are not presented as a hosted CI run.
+are recorded separately. Hosted CI was disabled by policy on the original
+work-account repository; the personal repository now runs hosted workflows.
+Local passing results are not presented as hosted CI results.
 
 Tactical starship command, exploration and trading roguelike for desktop browsers.
 
