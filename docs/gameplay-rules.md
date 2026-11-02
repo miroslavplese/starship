@@ -15,7 +15,8 @@ effect are inspectable in the ship diagram and system-details panel; the five
 primary allocation tiles preserve the mockup. Sensors and doors likewise have
 details controls; neither disappears merely because the mockup omits a tile.
 
-FTL is owned by engines: `ship.ftl = { chargeTicks, requiredTicks, destinationId }`.
+FTL is owned by engines: executable `ship.ftl` is charge ticks (0–600);
+`GameState.travel` owns the committed destination and transit timer.
 Baseline readiness is 600 powered ticks (30 seconds). Functional engines with
 at least one power, functional cockpit and a living aboard crew are required.
 Damage/ion lock pauses charge; charge is retained, not rerolled. Jump consumes
@@ -30,6 +31,17 @@ implemented in the first release. If living crew are all stranded off ship,
 offer boarding return/recovery or explicit abandonment, not an unexplained
 soft lock. No random reactor-catastrophe defeat is included; if added, it must
 be telegraphed with counterplay and a reviewed rule.
+
+A retreating contact becomes explicitly `withdrawn`, not a derelict or a
+bounty kill. It disappears when no living player crew need its location
+snapshot. A stranded team stays represented and auto-pauses the controller:
+the inactive out-of-range snapshot does not continue local hazards, movement,
+search, firing or free docking. Normal recall fails with the priced recovery
+instructions. Explicit emergency extraction costs 20 credits/debt, 10 HP per
+living crew and loose cargo, then takes 100 ticks; save/load retains that
+timer without charging again. Only after living away crew return can the
+Wayfarer depart or tow. Abandonment remains explicit. Foreign boarders already
+aboard the Wayfarer still fight and can capture it despite their ship leaving.
 
 Hostile capture requires hull > 0, no living defending crew aboard and at least
 one living player boarder in the enemy cockpit for 100 uninterrupted ticks.

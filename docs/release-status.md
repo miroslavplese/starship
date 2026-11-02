@@ -5,13 +5,16 @@ accepted M0 design remains authoritative. AI reviewers are not human players.
 
 ## Current status
 
-The application now has a playable tactical/strategic implementation. Full
-release acceptance is **not yet granted**. In particular, human pacing/fun
-validation and the complete M6 matrix remain unverified. The first implementation
-checkpoint includes integrated work beyond M1; this does not pre-approve later
-milestones.
+The application has a complete playable tactical/strategic Expedition.
+On 2026-11-02 the user explicitly authorized delivery with human-only
+pacing/fun gates marked **unverified**. This does not turn automated tests into
+human evidence, excuse engineering defects, or imply unrestricted acceptance.
+The engineering evidence and limitations below remain separate.
 
 ## Foundation checkpoint
+
+Historical evidence from the first implementation checkpoint; subsequent
+sections supersede its pending items while retaining failed measurements.
 
 - Strict TypeScript, Vite, React HUD, independent Pixi scene, standalone seeded
   20 Hz simulation, authored unlike ship layouts, graph movement, orders,
@@ -54,9 +57,11 @@ All mandatory requirement IDs in `validation.md` remain subject to exact
 behavior/evidence review. No green compilation substitutes for missing behavior.
 Full Expedition and first-sandbox engaged human durations have not been
 measured. Three profession-based human sessions and two onboarding sessions
-have not occurred. Performance/soak, cross-browser, full new-run browser
-victory, negative persistence matrix, actual implementation reviewer agreement,
-and final traceability sign-off are still pending.
+have not occurred. Those human-only gates remain explicitly unverified under
+the delivery authorization. Automated performance/soak, both browser full-run
+journeys, negative persistence coverage and scoped reviewer agreement are
+recorded below. Final artifact provenance and residual branch limitations must
+not be confused with those completed checks.
 
 No Captain Mode, multiplayer, additional player ship classes or permanent
 stat-bonus meta progression is claimed.
@@ -75,7 +80,7 @@ gave **ACCEPT within their retained findings scopes**, after corrections:
 | Game quality | Field contract claims exposed at nonstation destinations; immediate terminal persistence excluding training; investigation UI distinguishes assigned relay from corroborated evidence. |
 
 These are role-specialized AI reviews, not human playtests or blanket release
-approval. The current clean suite has **165 passing tests**. Chromium and Firefox
+approval. The current clean suite has **192 passing tests**. Chromium and Firefox
 production controls pass spatial targeting directly over an enemy crew sprite,
 combat save/reload, door lock/unlock, reversible-drill save isolation,
 abandonment/reload, commerce, freight and surveying. Chromium also passes
@@ -145,10 +150,40 @@ raider battles and guardian combat. A forced guardian retreat now explicitly
 secures passage with **zero destruction payout**; player escape does not.
 These are automated viability scenarios, not human fun/duration evidence.
 
-Physical emergency production controls also pass extinguishing, breach/system
-repair, powered-medbay healing and exterior-vent warning/closure in Chromium.
-The complete initial-battle-to-win browser driver is still being refined;
-failed driver attempts are not counted as battle acceptance.
+Physical emergency production controls pass extinguishing, breach/system
+repair, powered-medbay healing and exterior-vent warning/closure in both
+Chromium and Firefox. The prepared first-battle-to-win driver also passes
+both engines: purchase an extra laser, allocate Weapons power, deny enemy
+engine escape, suppress Weapons, physically extinguish/repair and restore ion-
+removed allocations, claim the bounty, return, save and reload. Earlier failed
+driver strategies are not counted as passes; a retreat is not a bounty kill.
+
+Withdrawn contacts now use an explicit inactive state, never a free derelict.
+Living away crew remain represented, freeze outside local simulation range,
+and trigger an immediate decision pause. Normal docking, targeting, boarding
+and loot are unavailable. Explicit emergency extraction costs 20 CR/debt,
+10 HP and loose cargo, takes 100 ticks, survives save/load and permits
+departure only after living away crew return. Abandonment is a separate
+confirmed ending; hostile boarders already aboard remain dangerous.
+
+Corrupt-primary recovery now permits subsequent verified saving while keeping
+the good previous slot and a bounded original diagnostic. Conflicting retained
+corruption cannot be silently overwritten; export and explicitly confirmed
+discard preserve valid saves. Authored cargo/module and recorder references
+are checked. Synthesized cues now survive run/load tick rewinds, respect true
+zero volume, prioritize critical alarms, and consume all new events rather
+than only the last event in a batch. WebAudio adapter tests do not claim a
+human listening session.
+
+The final candidate's strict TypeScript and production build pass; eight
+retreat/stranding and six audio regressions join the original 165 tests and
+13 content-reference/quarantine regressions. Both browsers pass the actual
+stranded-team/save/load/priced-recovery controls and compact physical-emergency
+drill. A contended Chromium first-battle driver lost while issuing orders live;
+the corrected driver uses the game's tactical pause and restores all three
+weapon allocations, rather than allowing automation latency to continue the
+fight unattended. Its Chromium rerun passes. Final combined browser reruns are
+recorded separately; that failed run is not erased.
 
 ## External validation limitations
 
@@ -159,9 +194,11 @@ This is not a successful CI result, nor an application test failure. Local
 test/build/browser evidence is recorded separately; administrator enablement
 is external to the game.
 
-No human timing/fun waiver has been received. The coordinating session sent
-the requested critical consultation and is monitoring that specific thread;
-personal contact data is deliberately not stored in the repository.
+The requested critical consultation received an explicit delivery decision:
+"Given the current state, please authorize the delivery with the human-only
+pacing/fun gates explicitly marked as unverified." This authorizes delivery,
+not a fabricated human pass or a waiver of engineering defects. No personal
+contact data is stored in this repository.
 
 ## Requirement traceability at this checkpoint
 
@@ -178,7 +215,7 @@ supersede an unmet human, visual or performance gate.
 | R07–R09 | `region.ts` six economies/ten goods, integrated marginal quotes, bounded dynamic events/stock, mass/volume/reservations/stale snapshots; 100-seed graph and reversal tests | Extended balance scenarios pending |
 | R10–R12d | `missions.ts`, customs gateway, faction/fitting gates and eleven distinct mission categories; 38 mission tests plus actual freight/field claim UI | Full browser branch matrix pending |
 | R13–R15 | Physical search/engineering/recall, unique compartment supplies/logs/recorder/survivor/threat, persistent depletion, risk countdown and finite equipped mining; tactical/mission regressions | Complete browser recovery narrative pending |
-| R16–R20 | `ships.ts`, `validate.ts`, shared tactical rules, room graph, pressure/fire/breach/manning/skills/health; tactical tests and actual door/target controls | Complete emergency browser task chain pending |
+| R16–R20 | `ships.ts`, `validate.ts`, shared tactical rules, room graph, pressure/fire/breach/manning/skills/health; tactical tests, actual door/target controls and both-browser physical emergency chain | Extended mixed-hazard combinations remain bounded-test coverage, not exhaustive play |
 | R21 | Future-only extras not required; functioning minimal drones/tether are present for required EW/boarding | No cloaking/shield-modulation claim |
 | R22–R27 | `tactical.ts` six weapon families, evasion/shields, paid directional attack/defense, EW variants, physical boarding/combat/sabotage/capture, shared-rule doctrines and one-time rewards; tactical regressions | Comprehensive UI counterplay coverage pending |
 | R28–R29 | Economy/size/tech/faction fitting availability, functional reactor/engine/shield/sensor/cargo/fuel/armor/EW/berth upgrades, visible weapon allocation priority; distinct fitted careers tested | Human balance/UX unverified |
@@ -186,8 +223,8 @@ supersede an unmet human, visual or performance gate.
 | R32–R33 | One complete player ship; no meta unlock or permanent stat-bonus system | Additional classes/meta are not claimed |
 | R34–R35 | Standalone typed 20 Hz simulation, React/Pixi/event separation, frame-subdivision/command-replay/combat-continuation tests, strict build; measured tick/render and bounded soak results above | Software fallback misses rendering target |
 | R36 | Original generated hull/backgrounds and procedural room/crew/effect graphics; provenance `public/art/manifest.json`; actual screenshots inspected | Final all-category visual acceptance pending |
-| R37 | Synthesized event audio with mute/volume, matching textual ship log | Audible cue completeness/listening gate pending |
-| R38 | Actual spatial Laser/Ion targeting over hostile crew, live combat save/reload, tactical first-battle win/surrender and departure regressions | Full emergency/defeat production journey pending |
+| R37 | Synthesized event audio with mute/volume, restart/load reset and critical priority; six WebAudio lifecycle/frequency regressions; matching textual ship log | Human listening assessment not performed |
+| R38 | Actual spatial Laser/Ion targeting over hostile crew, live combat save/reload, prepared real-control first-battle win/reward/departure and both-browser physical emergency chain | Browser defeat branch remains separate from simulation defeat coverage |
 | R39 | Exact first-system counts and ten goods across 100 seeds; real-control commerce/freight/survey | 20–30 minute first-time human sandbox evidence absent |
 | R40 | No manual flight, multiplayer, surface/MMO or cloud-account dependency | Implemented scope boundary |
 | R41 | Real ship emergencies, recall, convoy/cargo/customs and deep-space choices interact | Human emergent-story/opportunity-cost protocol pending |

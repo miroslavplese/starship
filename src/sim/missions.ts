@@ -248,6 +248,7 @@ export function missionTick(state: GameState): void {
 
 export function missionSearch(state: GameState, shipId: string, roomId: string, crewId: string): Result {
   if (state.phase !== 'expedition' || state.travel) return reject('Search requires an ongoing expedition at a stationary wreck.');
+  if (!currentSystem(state).locations.some(location => location.id === state.locationId && location.kind === 'derelict')) return reject('Battle salvage is paid at encounter resolution; unique wreck items require an authored derelict site.');
   const p = player(state), ship = state.ships.find(candidate => candidate.id === shipId);
   const room = ship?.rooms.find(candidate => candidate.id === roomId), crew = state.crew.find(candidate => candidate.id === crewId);
   if (!ship || ship.doctrine !== 'derelict' || ship.hull <= 0 || !room || room.searched) return reject('This compartment has no uncollected wreck salvage.');

@@ -1,0 +1,55 @@
+import { expect, test } from '@playwright/test';
+import { command, createGame, step } from '../../src/sim/game';
+import { encode } from '../../src/game/persistence';
+
+test('withdrawn-contact stranding pauses, persists and requires explicit paid recovery before departure', async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+  const state = createGame(12345);
+  expect(command(state, { type: 'travel', destination: 's0-pirate', system: false }).ok).toBe(true);
+  for (let i = 0; i < 140; i++) step(state);
+  const enemy = state.ships.find(sh => sh.id === 'enemy')!;
+  state.ships[0].modules.push('teleporter'); enemy.shields = 0; enemy.weapons = [];
+  for (const crew of state.crew.filter(c => c.home === 'player')) {
+    expect(command(state, { type: 'board', crew: crew.id, confirm: true }).ok).toBe(true);
+  }
+  enemy.hull = 8; enemy.ftl = 600; state.tick = 159;
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await page.getByRole('button', { name: 'Skip introduction' }).click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.locator('input[type="file"]').setInputFiles({ name: 'retreat-decision.json', mimeType: 'application/json', buffer: Buffer.from(encode(state)) });
+  await expect(page.locator('.dialog-footer')).toContainText('Imported validated run');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.getByRole('button', { name: /RESUME/ }).click();
+  await expect(page.locator('.stranded-banner')).toContainText('AWAY TEAM STRANDED');
+  await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
+  await expect(page.locator('.enemy-readout')).not.toContainText('CONTACT HULL');
+  await page.getByRole('button', { name: 'SHIP', exact: true }).click();
+  await expect(page.locator('.dialog select option')).toHaveCount(1);
+  await expect(page.locator('.operation-buttons button').filter({ hasText: /^Raider Kestrel:/ })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.keyboard.press('f');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Load current slot', exact: true }).click();
+  await expect(page.locator('.dialog-footer')).toContainText('Expedition loaded paused');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.screenshot({ path: `test-results/${test.info().project.name}-stranded.png` });
+  await page.getByRole('button', { name: 'Review crew / emergency tether', exact: true }).click();
+  for (const button of await page.getByRole('button', { name: 'Board contact', exact: true }).all()) await expect(button).toBeDisabled();
+  await expect(page.locator('.service-grid')).toContainText('WITHDRAWN CONTACT');
+  await page.getByRole('button', { name: 'Recall away team', exact: true }).click();
+  await expect(page.locator('.dialog-footer')).toContainText('beyond docking range');
+  await page.getByRole('button', { name: 'Emergency tether', exact: true }).click();
+  await expect(page.getByRole('alertdialog')).toContainText('20 credits/debt, 10 HP');
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(page.locator('[title="Credits and scrap"]')).toHaveText('CR 40');
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.getByRole('button', { name: /RESUME/ }).click();
+  await expect(page.locator('.stranded-banner')).toHaveCount(0, { timeout: 60000 });
+  await expect(page.locator('.crew-roster')).not.toContainText('AWAY');
+  for (const name of ['Mara', 'Ivo', 'Kade']) await expect(page.getByRole('progressbar', { name: `${name} health` })).toHaveAttribute('value', '90');
+  await page.getByRole('button', { name: /NAVIGATION/ }).click();
+  await page.locator('.contact-card').filter({ has: page.getByRole('heading', { name: 'Haven Anchorage', exact: true }) }).getByRole('button', { name: 'SET COURSE' }).click();
+  await expect(page.locator('.location-strip')).toContainText('Haven Anchorage', { timeout: 60000 });
+  expect(errors).toEqual([]);
+});

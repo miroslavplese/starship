@@ -57,6 +57,7 @@ function applyCommand(s: GameState, c: Command): Result {
     if (!c.confirm) return reject('Confirm abandonment; this ends the expedition.');
     s.phase = 'abandoned'; event(s, 'ending', 'Expedition abandoned by captain.'); return success;
   }
+  if (c.type === 'crew' && c.task === 'search' && loc.kind !== 'derelict') return reject('Battle salvage is paid at encounter resolution. Physical compartment recovery requires an authored derelict site.');
   const tactical = tacticalCommand(s, c);
   if (tactical) return tactical;
   if (c.type === 'travel') {
@@ -204,6 +205,7 @@ function applyCommand(s: GameState, c: Command): Result {
   if (c.type === 'recall') {
     const away = s.crew.filter(x => x.home === 'player' && x.health > 0 && x.shipId !== 'player');
     if (!away.length) return reject('No living away team.');
+    if (!c.emergency && away.some(c => s.ships.some(sh => sh.id === c.shipId && sh.doctrine === 'withdrawn'))) return reject('Contact withdrawn beyond docking range. Use emergency tether: 20 CR/debt, 10 HP and loose cargo, or explicitly abandon the expedition.');
     const routes = away.map(c => {
       const ship = s.ships.find(sh => sh.id === c.shipId);
       return ship ? path(ship, c.room, ship.rooms[0].id) : null;
@@ -281,6 +283,7 @@ function coordinate(s: GameState, id: string) {
   if (s.coordinates.length === 3) s.region.forEach(r => r.known = true);
 }
 function reconcileLostCrew(s: GameState) {
+  s.ships = s.ships.filter(sh => sh.doctrine !== 'withdrawn' || s.crew.some(c => c.home === 'player' && c.shipId === sh.id && c.health > 0));
   s.crew = s.crew.filter(c => c.home === 'player' || s.ships.some(sh => sh.id === c.shipId));
   s.projectiles = s.projectiles.filter(p => s.ships.some(sh => sh.id === p.source) && s.ships.some(sh => sh.id === p.target && sh.rooms.some(r => r.id === p.room)));
   for (const sh of s.ships) for (const w of sh.weapons) if (w.target && !s.ships.some(target => target.id !== sh.id && target.rooms.some(r => r.id === w.target))) { w.target = null; w.auto = false; }
@@ -297,7 +300,7 @@ function startEnemy(s: GameState, guardian = false) {
   if (guardian) enemy.modules = ['ew', 'teleporter', 'drones'];
   else if (currentSystem(s).risk >= 2) enemy.modules = [(['ew', 'teleporter', 'drones'] as const)[Math.floor(random(s) * 3)]];
   if (enemy.modules.includes('ew')) { const ew = enemy.systems.find(x => x.kind === 'ew'); if (ew && enemy.systems.reduce((n, x) => n + x.power, 0) < enemy.reactor) ew.power = 1; }
-  const wreck = s.ships.find(sh => sh.doctrine === 'derelict' && s.crew.some(c => c.shipId === sh.id && c.health > 0 && c.home === 'player'));
+  const wreck = s.ships.find(sh => (sh.doctrine === 'derelict' || sh.doctrine === 'withdrawn') && s.crew.some(c => c.shipId === sh.id && c.health > 0 && c.home === 'player'));
   s.ships = [player(s), enemy, ...(wreck ? [wreck] : []), ...convoyShips(s)]; s.crew = s.crew.filter(c => c.home === 'player'); s.crew.push(...createCrew('enemy', true)); s.encounter = 'hostile';
   event(s, 'hostile', `${enemy.name} detected. Pause to assign targets; FTL escape is available when charged.`);
 }

@@ -63,6 +63,7 @@ function crewOrder(state: GameState, actor: Ship, command: Extract<Command, { ty
   const ship = state.ships.find(candidate => candidate.id === crew.shipId && candidate.hull > 0);
   const room = ship?.rooms.find(candidate => candidate.id === command.room);
   if (!ship || !room || !tasks.includes(command.task)) return reject('Invalid room or crew task.');
+  if (ship.doctrine === 'withdrawn') return reject('Contact withdrawn beyond command/docking range. Use priced emergency tether extraction or explicitly abandon the expedition.');
   if (command.task === 'return' && crew.shipId !== crew.home) return reject('Use recall to cross the docking tether.');
   if (command.task === 'heal' && (room.system !== 'medbay' || !powered(ship, 'medbay'))) return reject('Healing requires an operational powered medbay.');
   if (command.task === 'sabotage' && (ship.id === actor.id || !hostile(ship) && actor.doctrine === 'player')) return reject('Sabotage requires a hostile ship.');
@@ -244,7 +245,7 @@ function moveCrew(state: GameState): void {
     }
     if (!crew.path.length) continue;
     const ship = state.ships.find(candidate => candidate.id === crew.shipId);
-    if (!ship || ship.hull <= 0) continue;
+    if (!ship || ship.hull <= 0 || ship.doctrine === 'withdrawn') continue;
     const destination = crew.path[crew.path.length - 1];
     const route = path(ship, crew.room, destination);
     if (!route) {
@@ -279,7 +280,7 @@ function weaponPower(ship: Ship): Set<string> {
 }
 
 function chargeWeapons(state: GameState, ship: Ship): void {
-  if (state.encounter !== 'hostile' || ship.hull <= 0 || ship.doctrine === 'derelict' || !alive(state, ship.id).length) return;
+  if (state.encounter !== 'hostile' || ship.hull <= 0 || ship.doctrine === 'derelict' || ship.doctrine === 'withdrawn' || !alive(state, ship.id).length) return;
   const active = weaponPower(ship);
   const bonus = 1 + stationSkill(state, ship, 'weapons', 'weapons') * .1;
   for (const weapon of ship.weapons) {
@@ -494,9 +495,9 @@ function crewTasks(state: GameState): void {
     if (crew.health <= 0) continue;
     const ship = state.ships.find(candidate => candidate.id === crew.shipId && candidate.hull > 0);
     const room = ship?.rooms.find(candidate => candidate.id === crew.room);
-    if (!ship || !room) continue;
+    if (!ship || !room || ship.doctrine === 'withdrawn') continue;
     const defenders = ordered(state.crew).filter(candidate => candidate.health > 0 && candidate.shipId === ship.id && candidate.room === room.id && candidate.home !== crew.home);
-    if (defenders.length && (state.encounter === 'hostile' || state.encounter === 'derelict')
+    if (defenders.length && (ship.id === player(state).id || state.encounter === 'hostile' || state.encounter === 'derelict')
       && (crew.task === 'fight' || crew.home === ship.id || defenders.some(defender => defender.task === 'fight'))) {
       const target = defenders[0];
       combat.set(target.id, (combat.get(target.id) ?? 0) + .075 * (1 + crew.skills.combat * .2) * (target.trait === 'resilient' ? .85 : 1));
@@ -592,8 +593,15 @@ function finish(state: GameState, ship: Ship, outcome: 'destroyed' | 'capture' |
   }
   if (!paid && outcome !== 'escape' && outcome !== 'ceasefire') income(state, outcome === 'capture' ? 40 : outcome === 'surrender' ? 20 : 25);
   ship.capture = 0;
-  ship.doctrine = 'derelict';
-  for (const unit of ship.systems) unit.power = 0;
+  ship.doctrine = outcome === 'escape' ? 'withdrawn' : 'derelict';
+  if (outcome === 'escape') {
+    for (const crew of state.crew.filter(crew => crew.shipId === ship.id)) {
+      crew.path = []; crew.task = 'idle'; crew.progress = 0;
+    }
+    if (state.crew.some(crew => crew.home === player(state).id && crew.shipId === ship.id && crew.health > 0)) {
+      event(state, 'stranded', 'Away team stranded on withdrawn contact. Normal docking is unavailable; emergency tether costs 20 CR/debt, 10 HP and loose cargo. Explicit abandonment remains available.');
+    }
+  } else for (const unit of ship.systems) unit.power = 0;
   for (const vessel of state.ships) {
     for (const weapon of vessel.weapons) {
       if (vessel.id === ship.id || ship.rooms.some(room => room.id === weapon.target)) { weapon.target = null; weapon.auto = false; }
@@ -620,7 +628,6 @@ function terminals(state: GameState): void {
     event(state, 'defeat', home.hull <= 0 ? 'Wayfarer destroyed.' : 'All expedition crew lost.');
     return;
   }
-  if (state.encounter !== 'hostile' && state.encounter !== 'surrender') return;
   const bridge = home.rooms.find(room => room.system === 'cockpit');
   const invaders = state.crew.some(crew => crew.home !== home.id && crew.shipId === home.id && crew.room === bridge?.id && crew.health > 0 && !crew.path.length);
   home.capture = !alive(state, home.id).length && invaders ? home.capture + 1 : 0;
@@ -630,6 +637,7 @@ function terminals(state: GameState): void {
     event(state, 'defeat', 'Wayfarer captured by hostile boarders.');
     return;
   }
+  if (state.encounter !== 'hostile' && state.encounter !== 'surrender') return;
   for (const ship of ordered(state.ships).filter(hostile)) {
     if (ship.hull <= 0) {
       ship.capture = 0;
@@ -773,8 +781,8 @@ function ai(state: GameState, ship: Ship): void {
 /** Called once per fixed 50ms step; the owning game loop advances state.tick. */
 export function tacticalTick(state: GameState): void {
   if (state.phase !== 'expedition') return;
-  const ships = ordered(state.ships);
-  for (const ship of ships) if (ship.hull > 0) {
+  const ships = ordered(state.ships).filter(ship => ship.doctrine !== 'withdrawn');
+  for (const ship of ships) if (ship.hull > 0 && ship.doctrine !== 'withdrawn') {
     if (state.encounter === 'hostile' && hostile(ship)) ship.aiTick++;
     ai(state, ship);
     for (const unit of ship.systems) if (unit.ion > 0) unit.ion--;
@@ -783,12 +791,12 @@ export function tacticalTick(state: GameState): void {
   moveCrew(state);
   for (const ship of ships) chargeWeapons(state, ship);
   projectiles(state);
-  for (const ship of ships) if (ship.hull > 0) {
+  for (const ship of ships) if (ship.hull > 0 && ship.doctrine !== 'withdrawn') {
     atmosphere(state, ship);
     emergencies(state, ship);
   }
   crewTasks(state);
-  for (const ship of ships) if (ship.hull > 0) {
+  for (const ship of ships) if (ship.hull > 0 && ship.doctrine !== 'withdrawn') {
     enforcePower(state, ship);
     recharge(state, ship);
   }

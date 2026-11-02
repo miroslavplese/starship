@@ -111,6 +111,34 @@ interface GameApi {
 }
 ```
 
+### Implemented bindings
+
+The executable contracts in `src/sim/types.ts` and `game/controller.ts` refine
+the conceptual interfaces above without adding another authoritative store:
+
+- `Ship.ftl` is the integer 0–600 engine-owned charge; a separate
+  `GameState.travel` holds `{ destination, system, remaining, total }`.
+  The executable destination key is `destination`, not `destinationId`.
+- Paused commands live in `queue: Command[]`, with matching `queueMeta`
+  tick/sequence entries. Accepted/executed records are retained in a bounded
+  recent `commandHistory`; it is not an unlimited full-run replay archive.
+- `dispatch` returns the discriminated `Result` without a generic payload;
+  sequence lives on the run. `snapshot()` returns a stable revision number
+  for `useSyncExternalStore`; the simulation is disciplined single-writer.
+- `userPaused` is persistent. Forced load/focus/contact pause and modal pause
+  belong to the controller and cannot erase the saved user-pause preference.
+- Drones and boarding tether are installed module flags using the shared ship
+  rules, not extra independent reactor consumers in `SystemKind`.
+- Weapon priority and cease-fire are explicit commands. Priority changes the
+  actual allocation order; cease-fire clears target/auto without firing.
+- Mission manifests, passenger condition, unique target/convoy identities,
+  recorder/clue state and inspection evidence are typed contract fields.
+  Active claims are available at field destinations, not only stations.
+- A forced-retreat marker is distinct from destruction/surrender rewards.
+  Guardian retreat can secure passage without pretending a kill or paying
+  destruction salvage. `doctrine: 'withdrawn'` retains only an inactive
+  stranded-crew location snapshot, never a boardable or searchable derelict.
+
 No module-global game singleton in tests. Dispose animation callbacks,
 subscriptions, AudioContext and Pixi resources when restarting or unmounting.
 Selectors expose derived HUD values, room hitboxes, visible contacts, legal

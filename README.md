@@ -35,7 +35,9 @@ save/continue, guardian passage, archive extraction and a persisted victory.
 It uses the player's safe-speed control, not hidden state or fixture saves.
 `tests/e2e/persistence.spec.ts` uses UI-created saves to verify rejected imports,
 previous-slot recovery, quota failures and failed read-back without losing the
-live expedition or claiming a successful save.
+live expedition or claiming a successful save. Corrupt originals are preserved
+in a bounded diagnostic slot so recovery can continue saving. Settings exposes
+diagnostic export and explicitly confirmed discard without deleting good saves.
 For parallel worktrees, set `STARSHIP_TEST_PORT` to an unused preview port.
 See [browser journey evidence](docs/expedition-browser-evidence.md) for measured
 results and their limits.
@@ -50,10 +52,30 @@ recover the beacon archive and return to Haven. Paused tactical orders queue
 until resume; station/map dialogs pause the interaction without erasing manual
 pause.
 
-**Release status:** implementation and acceptance are tracked honestly in
+**Delivery authorized with limitations:** on 2026-11-02 the user explicitly
+authorized delivery with human-only pacing/fun gates marked **unverified**.
+Implementation and engineering evidence are tracked in
 [`docs/release-status.md`](docs/release-status.md). Human pacing/fun has not
 been verified; the GDD's 90–180 minute Expedition and 20–30 minute sandbox
 durations are targets, not measured claims.
+
+Opt-in diagnostics are separate from the normal browser suite:
+
+```powershell
+$env:PERFORMANCE='1'
+$env:GRAPHICS_QUALITY='auto'
+$env:PERFORMANCE_FIXTURE='baseline'
+node .\node_modules\@playwright\test\cli.js test --project=chromium --headed --grep 'actual production battle rendering'
+Remove-Item Env:PERFORMANCE,Env:GRAPHICS_QUALITY,Env:PERFORMANCE_FIXTURE
+$env:SOAK='1'
+node .\node_modules\@playwright\test\cli.js test --project=chromium --grep '25 production'
+Remove-Item Env:SOAK
+```
+
+Verify the reported WebGL adapter rather than assuming headful hardware.
+Hardware and software results, synthetic workload counts and memory limits
+are recorded separately. Hosted CI is currently disabled by repository policy;
+local passing results are not presented as a hosted CI run.
 
 Tactical starship command, exploration and trading roguelike for desktop browsers.
 

@@ -46,7 +46,7 @@ const baseSchema = z.object({
     doors: z.array(z.object({ id, a: id, b: id.nullable(), open: z.boolean(), locked: z.boolean(), health: nonnegative })).max(64),
     weapons: z.array(z.object({ id, family, charge: nonnegative, target: id.nullable(), auto: z.boolean() })).max(12),
     shields: nonnegative, shieldProgress: nonnegative, ftl: nonnegative.max(600), maneuver: nonnegative, maneuverTarget: bearing, aiTick: nonnegative, capture: nonnegative,
-    doctrine: z.enum(['player', 'pirate', 'military', 'derelict']),
+    doctrine: z.enum(['player', 'pirate', 'military', 'derelict', 'withdrawn']),
   })).min(1).max(4),
   crew: z.array(z.object({
     id, name: id, species: id, trait: id, health: nonnegative.max(100), shipId: id, home: id, room: id, path: z.array(id).max(64), progress: nonnegative, task, lostAt: z.string().max(512).optional(),
@@ -91,7 +91,7 @@ function checksum(text: string): string {
 export function validate(data: unknown): GameState {
   const s: GameState = schema.parse(data);
   const unique = (ids: string[]) => new Set(ids).size === ids.length;
-  if (!unique(s.ships.map(x => x.id)) || !unique(s.crew.map(x => x.id)) || !unique(s.region.map(x => x.id)) || s.ships[0].id !== 'player') throw new Error('Duplicate or invalid entity identities.');
+  if (!unique(s.ships.map(x => x.id)) || !unique(s.crew.map(x => x.id)) || !unique(s.region.map(x => x.id)) || s.ships[0].id !== 'player' || s.ships[0].doctrine !== 'player') throw new Error('Duplicate or invalid entity identities.');
   const locations = s.region.flatMap(r => r.locations);
   const recorders = new Set(locations.filter(l => l.kind === 'derelict').map(l => recorderKey(l.id)));
   const sys = s.region.find(r => r.id === s.systemId);
@@ -126,6 +126,7 @@ export function validate(data: unknown): GameState {
   if (Object.values(s.ships[0].cargo).reduce((a, b) => a + b, 0) + reserved > s.ships[0].capacity) throw new Error('Loose and reserved cargo exceed capacity.');
   if (s.queueMeta && s.queueMeta.length !== s.queue.length) throw new Error('Command queue metadata mismatch.');
   if (Object.keys(s.wrecks ?? {}).length > 128 || Object.keys(s.wrecks ?? {}).some(key => !locations.some(l => l.id === key && l.kind === 'derelict'))) throw new Error('Broken persistent wreck reference.');
+  if (Object.values(s.wrecks ?? {}).some(ship => ship.doctrine !== 'derelict')) throw new Error('Only authored derelicts can be archived; withdrawn contacts are not salvage.');
   if (s.threat && !locations.some(l => l.id === s.threat!.source)) throw new Error('Broken incoming threat source.');
   if (s.projectiles.some(p => !s.ships.some(sh => sh.id === p.source) || !s.ships.some(sh => sh.id === p.target && sh.rooms.some(r => r.id === p.room)))) throw new Error('Broken projectile target.');
   return s;

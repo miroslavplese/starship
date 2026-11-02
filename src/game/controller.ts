@@ -42,11 +42,13 @@ export class GameController {
     this.accumulator += Math.min(250, ms);
     let updated = false;
     while (this.accumulator >= 50) {
-      const safe = this.state.encounter !== 'hostile' && !this.state.customs && !this.state.threat && this.state.crew.every(c => c.health <= 0 || c.home !== 'player' || c.shipId === 'player') && this.state.ships[0].rooms.every(r => r.fire === 0 && r.breach === 0 && r.oxygen > 0.2);
+      const safe = this.state.encounter !== 'hostile' && !this.state.customs && !this.state.threat && this.state.crew.every(c => c.health <= 0 || (c.home === 'player' ? c.shipId === 'player' : c.shipId !== 'player')) && this.state.ships[0].rooms.every(r => r.fire === 0 && r.breach === 0 && r.oxygen > 0.2);
       for (let i = 0; i < (safe ? this.speed : 1); i++) {
         const encounter = this.state.encounter, threat = this.state.threat;
+        const stranded = this.state.crew.some(c => c.home === 'player' && c.health > 0 && this.state.ships.some(sh => sh.id === c.shipId && sh.doctrine === 'withdrawn'));
         step(this.state);
-        if ((this.state.encounter === 'hostile' && encounter !== 'hostile') || (!threat && this.state.threat) || this.state.customs || this.state.phase !== 'expedition') { this.forcedPause = 'Contact / decision'; this.reason = 'Contact / decision'; break; }
+        const newlyStranded = !stranded && this.state.crew.some(c => c.home === 'player' && c.health > 0 && this.state.ships.some(sh => sh.id === c.shipId && sh.doctrine === 'withdrawn'));
+        if (newlyStranded || (this.state.encounter === 'hostile' && encounter !== 'hostile') || (!threat && this.state.threat) || this.state.customs || this.state.phase !== 'expedition') { this.forcedPause = newlyStranded ? 'Away team stranded: emergency tether or abandonment' : 'Contact / decision'; this.reason = this.forcedPause; break; }
       }
       this.accumulator -= 50; updated = true;
       if (this.paused) break;
@@ -60,7 +62,7 @@ export class GameController {
   hidden() { this.forcedPause = 'Paused while away'; this.reason = 'Paused while away'; this.accumulator = 0; this.notify(); }
   persist() {
     if (this.training) { this.message = 'Training is reversible and does not overwrite your expedition save.'; this.notify(); return { ok: false as const, message: this.message }; }
-    const r = save(this.state); this.message = r.ok ? 'Expedition saved and verified.' : r.message; this.notify(); return r;
+    const r = save(this.state); this.message = r.ok ? r.quarantined ? 'Expedition saved and verified. Corrupt original retained in recovery diagnostics; export before discarding.' : 'Expedition saved and verified.' : r.message; this.notify(); return r;
   }
   load(previous = false) {
     if (this.training) { this.message = 'Return from the drill before loading another expedition.'; this.notify(); return; }
