@@ -41,6 +41,9 @@ diagnostic export and explicitly confirmed discard without deleting good saves.
 The persistence journey also checks pause/visibility overlap and queued orders
 across reload. `tests/e2e/endings.spec.ts` uses bounded lethal-impact and
 oxygen-loss fixtures to verify actual defeat, terminal autosave and reload.
+`tests/e2e/away-team.spec.ts` verifies full-hold salvage rejection, blocked
+recall, explicit paid extraction, reboarding, physical door authorization and
+traversal, log recovery and normal recall through the production controls.
 For parallel worktrees, set `STARSHIP_TEST_PORT` to an unused preview port.
 See [browser journey evidence](docs/expedition-browser-evidence.md) for measured
 results and their limits.

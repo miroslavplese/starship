@@ -92,8 +92,8 @@ using real safe-speed controls, freight, charts, surveying, fuel, guardian,
 beacon, extraction and terminal reload. See
 [`expedition-browser-evidence.md`](expedition-browser-evidence.md) for exact
 artifact provenance and assertions. These optimized automated durations are
-**not** normal engaged human pacing results. Rerunning against the final
-artifact remains required.
+**not** normal engaged human pacing results. The final immutable-artifact
+rerun is also complete, as recorded below and in the independent evidence.
 
 ## Performance, endurance and career evidence
 
@@ -200,6 +200,25 @@ victory, corrupt-save recovery/continued-save/export/discard and both actual
 missile-hull and oxygen-crew defeat/debrief/reload scenarios. Final guard-only
 artifact reruns are recorded in the independent browser evidence.
 
+On final runtime source `75eac32a3de22296a487ef138cc8341950fd0a1e`,
+the child matrix passes **17 tests with one intentional Firefox offline-cache
+skip** in 8.8 minutes. This repeats all previous 16 cases and adds a physical
+wreck journey in both engines: full-hold search rejection, blocked normal
+recall, explicit 20 CR/10 HP/cargo-forfeiting extraction, reboarding, locally
+authorized door unlocking, actual traversal/search for the sensor log, normal
+physical recall and verified saving. A validated import establishes only the
+bounded full-hold/blocked-route preconditions; subsequent controls and time
+progression use the production application, not hidden state setters.
+
+The coordinator independently passes **14/14 final-artifact browser cases**
+in 6.6 minutes, including the three newly rejected prototype-named queued
+fittings, and **199/199 unit tests** with exit code zero in 57.88 seconds.
+An earlier concurrent unit attempt passed all assertions but exited with a
+Vitest worker reporting timeout; that attempt is a runner failure, not a clean
+pass. Both verification matrices identify the same artifact below. Combined
+final browser coverage is **31 passed, one intentional skip**. Strict
+TypeScript also passes after the added browser journey.
+
 The final production bundle is `index-BIF077lt.js`, SHA256
 `4F8D3280BF828848B204E64803F585CE2A216A5F03798CEBC29B41A2BD82C03A`;
 CSS `index-CXeRX3E1.css`, SHA256
@@ -236,7 +255,7 @@ supersede an unmet human, visual or performance gate.
 | R06 | Four risk bands, truthful station availability, incoming-contact choice, finite fuel/rescue; full route evasion/refueling | Human preparation clarity unverified |
 | R07–R09 | `region.ts` six economies/ten goods, integrated marginal quotes, bounded dynamic events/stock, mass/volume/reservations/stale snapshots; 100-seed graph and reversal tests | Extended balance scenarios pending |
 | R10–R12d | `missions.ts`, customs gateway, faction/fitting gates and eleven distinct mission categories; 38 mission tests plus actual freight/field claim UI | Full browser branch matrix pending |
-| R13–R15 | Physical search/engineering/recall, unique compartment outcomes, persistent depletion, risk countdown and mining; tactical/mission regressions plus both-browser stranded-team persistence/priced recovery | Exhaustive all-room/hazard combinations are not claimed |
+| R13–R15 | Physical compartment outcomes/mining; tactical/mission regressions; both-browser full-hold rejection, blocked-route extraction, reboarding/local door authorization/traversal/log search/normal recall, plus withdrawn-team save/recovery | Exhaustive all-room/hazard combinations are not claimed |
 | R16–R20 | `ships.ts`, `validate.ts`, shared tactical rules, room graph, pressure/fire/breach/manning/skills/health; tactical tests, actual door/target controls and both-browser physical emergency chain | Extended mixed-hazard combinations remain bounded-test coverage, not exhaustive play |
 | R21 | Future-only extras not required; functioning minimal drones/tether are present for required EW/boarding | No cloaking/shield-modulation claim |
 | R22–R27 | `tactical.ts` six weapon families, evasion/shields, paid directional attack/defense, EW variants, physical boarding/combat/sabotage/capture, shared-rule doctrines and one-time rewards; tactical regressions | Comprehensive UI counterplay coverage pending |
