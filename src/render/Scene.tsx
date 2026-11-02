@@ -682,20 +682,20 @@ export default function Scene(props: SceneProps) {
         element.appendChild(app.canvas);
         app.stage.addChild(world);
         const image = new Image();
-        image.src = new URL('art/space.png', document.baseURI).href;
+        image.src = new URL(`${import.meta.env.BASE_URL}art/space.png`, document.baseURI).href;
         let spaceImage: HTMLImageElement | undefined;
         try { await image.decode(); spaceImage = image; }
         catch { /* The complete procedural background remains available offline if an asset is missing. */ }
         if (cancelled) { dispose(); return; }
         const hull = new Image();
-        hull.src = new URL('art/wayfarer-hull.png', document.baseURI).href;
+        hull.src = new URL(`${import.meta.env.BASE_URL}art/wayfarer-hull.png`, document.baseURI).href;
         try {
           await hull.decode();
           if (!cancelled) hullTexture = Texture.from(hull);
         } catch { /* Procedural hull plates remain the asset-independent fallback. */ }
         if (cancelled) { dispose(); return; }
         const hostileHull = new Image();
-        hostileHull.src = new URL('art/corsair-hull.png', document.baseURI).href;
+        hostileHull.src = new URL(`${import.meta.env.BASE_URL}art/corsair-hull.png`, document.baseURI).href;
         try {
           await hostileHull.decode();
           if (!cancelled) enemyHullTexture = Texture.from(hostileHull);

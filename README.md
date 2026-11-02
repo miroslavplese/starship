@@ -17,6 +17,41 @@ Open the printed local URL. Production: `npm run build`, then `npm run preview`.
 The generated `dist` is a static site; no account/backend/asset CDN is used
 during play. Keep local-save JSON exports as backups.
 
+## GitHub Pages
+
+`.github/workflows/pages.yml` builds/tests `main`, reads the site's configured
+base path, uploads `dist` and deploys using GitHub Pages. On an eligible
+repository, enable **Settings > Pages > Source > GitHub Actions**, then push
+`main` or run **Deploy GitHub Pages** manually. The workflow reports the actual
+site URL; a successful source push alone does not mean the site is live.
+
+**Current hosting blocker:** GitHub rejected Pages enablement for this repository
+with HTTP 422, "Your current plan does not support GitHub Pages for this
+repository." Its owner is an Enterprise Managed User. Such accounts can publish
+Pages only from organization-owned repositories, and those sites are always
+private. See [GitHub's managed-user Pages limits](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/github-pages-limits#limits-for-enterprise-managed-users).
+No repository visibility change or transfer is performed automatically.
+An approved organization destination is needed for enterprise-private hosting;
+public Pages needs an eligible non-managed account/destination.
+
+To verify a project-path deployment locally:
+
+```powershell
+$env:STARSHIP_BASE_PATH='/starship/'
+npm run build
+npm run preview
+# Open the printed URL with /starship/ appended.
+# In another shell, set the same STARSHIP_BASE_PATH and run:
+node .\node_modules\@playwright\test\cli.js test pages.spec.ts
+Remove-Item Env:STARSHIP_BASE_PATH
+```
+
+Default builds still use `/`. Art and service-worker URLs follow the configured
+base; offline caches are isolated by deployment path so another Pages project
+on the same origin is not cleared. Saves remain local to each browser/origin:
+export/import JSON to move an expedition from localhost to the hosted site.
+Hosting does not make the desktop layout phone-responsive.
+
 Graphics quality is selectable in the tactical view. Auto detects the adapter;
 the visible rendered-FPS diagnostic counts actual scene submissions and settles
 to zero when paused. Headful Iris Xe meets the measured performance target;

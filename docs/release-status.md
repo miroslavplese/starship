@@ -258,6 +258,29 @@ This is not a successful CI result, nor an application test failure. Local
 test/build/browser evidence is recorded separately; administrator enablement
 is external to the game.
 
+### GitHub Pages preparation (not a live deployment)
+
+The Pages build/deploy workflow is prepared, with Vite base-path-aware art,
+scripts, styles and service-worker registration. Offline cache lookup and
+cleanup are isolated to the deployment path. Strict builds and the deployment
+browser cases passed at both `/` and `/starship/`: each run had three passes
+(Chromium online/offline and Firefox online) and the explicitly skipped Firefox
+offline case. The existing 199 unit/regression tests also passed.
+
+An initial Firefox assertion counted Playwright network response events and
+missed service-worker-served artwork. The corrected test checks the browser's
+actual image resource entries and all three deployed PNG responses, rather than
+weakening the artwork requirement.
+
+Actual Pages creation was refused with HTTP 422: "Your current plan does not
+support GitHub Pages for this repository." The owner is an Enterprise Managed
+User, whose personal repositories cannot host Pages or use hosted Actions
+runners. [GitHub's Pages limits](https://docs.github.com/en/enterprise-cloud@latest/pages/getting-started-with-github-pages/github-pages-limits#limits-for-enterprise-managed-users)
+require an organization-owned repository and private publication for managed
+users. This is not a successful deployment or a live remote-play URL. Repository
+visibility/ownership has not changed; an approved eligible destination is still
+required.
+
 The requested critical consultation received an explicit delivery decision:
 "Given the current state, please authorize the delivery with the human-only
 pacing/fun gates explicitly marked as unverified." This authorizes delivery,

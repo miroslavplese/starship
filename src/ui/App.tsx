@@ -96,7 +96,7 @@ export default function App() {
   useEffect(() => () => audio.current.dispose(), []);
   useEffect(() => {
     if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-      void navigator.serviceWorker.register('./sw.js').catch(error => {
+      void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(error => {
         api.message = `Offline cache unavailable: ${error instanceof Error ? error.message : String(error)}. Online play and JSON exports remain available.`;
         api.notify();
       });
