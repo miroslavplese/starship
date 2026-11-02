@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "license": "Original project artwork; no third-party game art or textures.",
+  "assets": [
+    {
+      "id": "corsair-hull",
+      "source": "public/art/corsair-hull.png",
+      "origin": "Original AI-generated transparent hostile hull artwork supplied by the parent session for this project.",
+      "dimensions": { "width": 1671, "height": 941, "unit": "pixels" },
+      "usage": "Nine-sliced hostile or derelict hull, with authoritative room geometry fitted into its transparent aperture.",
+      "notes": "Original procedural hull remains available as an asset-independent fallback."
+    },
+    {
+      "id": "wayfarer-hull",
+      "source": "public/art/wayfarer-hull.png",
+      "origin": "Original AI-generated transparent hull artwork supplied by the parent session for this project.",
+      "dimensions": { "width": 1774, "height": 887, "unit": "pixels" },
+      "usage": "Nine-sliced outer player hull. The transparent aperture adapts to the authoritative room envelope; no room positions or hitboxes are derived from raster pixels.",
+      "notes": "Original procedural hull is retained as a fallback."
+    },
+    {
+      "id": "space-background",
+      "source": "public/art/space.png",
+      "origin": "Original AI-generated space artwork supplied by the parent session for this project.",
+      "dimensions": { "width": 1671, "height": 941, "unit": "pixels" },
+      "usage": "Local-only tactical starfield, nebula, asteroid and planetary background.",
+      "notes": "No external runtime requests. Procedural vector background is used if the image cannot be decoded."
+    },
+    {
+      "id": "tactical-scene",
+      "source": "src/render/Scene.tsx",
+      "origin": "Original authored procedural PixiJS vector artwork created for STARSHIP.",
+      "dimensions": { "width": 1600, "height": 600, "unit": "logical pixels" },
+      "usage": "Responsive tactical scene: starfield, layered nebula, planetary limb, asteroids, angular ship hulls, armor plates, engine glow, room-system glyphs, crew sprites, hexagonal shields, fire, breaches, target reticles and projectiles.",
+      "notes": "Combat mockup informs composition only. No mockup pixels, extracted sprites, commercial game assets, external fonts or network resources are used. Room geometry, living crew and combat effects derive from simulation state."
+    }
+  ]
+}
