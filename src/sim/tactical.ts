@@ -586,6 +586,10 @@ function finish(state: GameState, ship: Ship, outcome: 'destroyed' | 'capture' |
   const token = `encounter:${encounterKey(state, ship)}`;
   const paid = state.rewards.includes(token);
   if (!paid) state.rewards.push(token);
+  if (outcome === 'escape') {
+    const retreat = `retreat:${state.systemId}:${state.locationId}`;
+    if (!state.rewards.includes(retreat)) state.rewards.push(retreat);
+  }
   if (!paid && outcome !== 'escape' && outcome !== 'ceasefire') income(state, outcome === 'capture' ? 40 : outcome === 'surrender' ? 20 : 25);
   ship.capture = 0;
   ship.doctrine = 'derelict';

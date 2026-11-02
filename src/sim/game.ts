@@ -228,6 +228,7 @@ function applyCommand(s: GameState, c: Command): Result {
     }
     if (c.choice === 'withdraw') {
       if (sys.id !== 's7') return reject('Withdrawal is only offered at the guardian.');
+      if (s.travel || s.action) return reject('Finish the current operation before withdrawing.');
       s.encounter = 'none'; s.ships = [p, ...convoyShips(s)]; s.crew = s.crew.filter(x => x.home === 'player'); s.projectiles = []; s.systemId = 's6'; s.locationId = 's6-station'; event(s, 'travel', 'Withdrew to The Veil. Archive knowledge retained.'); return success;
     }
     if (c.choice === 'negotiate' || c.choice === 'spoof') {
@@ -305,13 +306,21 @@ export function step(s: GameState) {
   s.tick++;
   const queue = s.queue.splice(0), metadata = s.queueMeta?.splice(0) ?? [];
   queue.forEach((c, i) => { const result = command(s, c, metadata[i]?.sequence ?? ++s.sequence); if (!result.ok) event(s, 'error', result.message); });
+  const guardianContact = s.systemId === 's7' && !s.guardian && s.encounter === 'hostile'
+    ? s.ships.find(sh => sh.name === 'Cartographer Sentinel')?.id : undefined;
+  const retreatMarker = `retreat:${s.systemId}:${s.locationId}`;
+  const alreadyRetreated = s.rewards.includes(retreatMarker);
   tacticalTick(s);
   if (s.phase !== 'expedition') return;
+  if (guardianContact && !alreadyRetreated && s.rewards.includes(retreatMarker) && !s.travel) {
+    s.guardian = true;
+    event(s, 'objective', 'The Cartographer Sentinel disengaged under pressure. Terminus passage secured; no destruction bounty was awarded.');
+  }
   const p = player(s), sys = currentSystem(s);
   if (s.threat && !s.threat.awaiting && --s.threat.remaining <= 0) { s.threat = null; startEnemy(s); }
   if (s.travel && --s.travel.remaining <= 0) {
     const t = s.travel; s.travel = null;
-    const wreck = s.ships.find(sh => sh.doctrine === 'derelict');
+    const wreck = currentLocation(s).kind === 'derelict' ? s.ships.find(sh => sh.doctrine === 'derelict') : undefined;
     if (wreck) { s.wrecks ??= {}; s.wrecks[s.locationId] = wreck; }
     if (t.system) { s.systemId = t.destination; const arrived = currentSystem(s); s.locationId = arrived.locations.find(l => l.kind === 'station')?.id ?? arrived.locations[0].id; arrived.known = true; }
     else s.locationId = t.destination;
@@ -320,6 +329,7 @@ export function step(s: GameState) {
     if (loc.kind === 'pirate' && !loc.depleted) startEnemy(s);
     if (loc.kind === 'derelict' && !loc.depleted) {
       const derelict = s.wrecks?.[loc.id] ?? createShip('derelict', false, true);
+      derelict.name = loc.name;
       if (s.wrecks) delete s.wrecks[loc.id];
       s.ships = [p, derelict, ...convoyShips(s)]; s.encounter = 'derelict';
       event(s, 'boarding', 'Derelict tether secured. Board a crew member, inspect air and physically search compartments. Emergency tether costs 20.');

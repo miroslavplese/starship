@@ -17,6 +17,11 @@ Open the printed local URL. Production: `npm run build`, then `npm run preview`.
 The generated `dist` is a static site; no account/backend/asset CDN is used
 during play. Keep local-save JSON exports as backups.
 
+Graphics quality is selectable in the tactical view. Auto detects the adapter;
+the visible rendered-FPS diagnostic counts actual scene submissions and settles
+to zero when paused. Headful Iris Xe meets the measured performance target;
+headless software rendering currently does not.
+
 ```powershell
 npm test
 npx playwright install chromium firefox

@@ -60,3 +60,135 @@ and final traceability sign-off are still pending.
 
 No Captain Mode, multiplayer, additional player ship classes or permanent
 stat-bonus meta progression is claimed.
+
+## Reviewed implementation corrections
+
+Architecture, software-developer, gamer and game-quality AI reviewers all
+initially requested revisions to the implementation. All four subsequently
+gave **ACCEPT within their retained findings scopes**, after corrections:
+
+| Reviewer | Corrected findings and evidence |
+|---|---|
+| Architecture | Interception/route save IDs, persistent partial wrecks, graph recall, customs authority, functional power/reserved-cargo invariants, user-pause/queue/replay metadata, faction service authorization. Reviewer independently passed 12 focused regressions and five read-only probes. |
+| Software developer | Guardian withdrawal rejects pending operations atomically; defeated/surrendered raiders are not archived under invalid authored-wreck keys. Public-command departure/save/continuation regressions cover both battle outcomes. |
+| Gamer | Genuine unlock state, wreck continuity, adjustable weapon-power priority, truthful service geography/contact risk, combat coordinate alternatives, reversible drills/onboarding, fitting effects, reachable seeded enemy variants. Reviewer independently passed 87 strategy/tactical tests. |
+| Game quality | Field contract claims exposed at nonstation destinations; immediate terminal persistence excluding training; investigation UI distinguishes assigned relay from corroborated evidence. |
+
+These are role-specialized AI reviews, not human playtests or blanket release
+approval. The current clean suite has **165 passing tests**. Chromium and Firefox
+production controls pass spatial targeting directly over an enemy crew sprite,
+combat save/reload, door lock/unlock, reversible-drill save isolation,
+abandonment/reload, commerce, freight and surveying. Chromium also passes
+network-disabled cached shell/save continuation.
+
+The coordinating session independently passed a genuine new-run-to-victory
+journey in Chromium (1664x936, 1.4 minutes) and Firefox (1280x720, 2.2 minutes),
+using real safe-speed controls, freight, charts, surveying, fuel, guardian,
+beacon, extraction and terminal reload. See
+[`expedition-browser-evidence.md`](expedition-browser-evidence.md) for exact
+artifact provenance and assertions. These optimized automated durations are
+**not** normal engaged human pacing results. Rerunning against the final
+artifact remains required.
+
+## Performance, endurance and career evidence
+
+Windows, Intel Core i7-1185G7 (4 cores/8 logical processors), Intel Iris Xe host;
+headless Chromium 141 uses its software-rendering path. The current actual
+generated-battle diagnostic at 1280x720, Performance/50% linear resolution,
+measured **56.32 average render submissions/sec**, **52.30 display rAF/sec**,
+and **33.4 ms p95 display-frame interval** over 15 seconds. The 60 FPS /
+20 ms p95 gate **fails**. Render submissions are not GPU-completed frames.
+This generated battle is not the separately specified 32-projectile baseline
+or 256-projectile stress fixture. Explicit opt-in `PERFORMANCE=1` browser tests
+retain the failed threshold rather than silently relaxing it.
+
+Headful Chromium 141 with normal per-process GPU defaults **does** acquire the
+host adapter, verified through `WEBGL_debug_renderer_info`, not inferred from
+launch flags: `ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49)
+Direct3D11 vs_5_0 ps_5_0, D3D11)`. At 1280x720, Auto/100% resolution:
+
+| Workload | Render submissions/sec | Display rAF/sec | p95 frame interval | Result |
+|---|---:|---:|---:|---|
+| Actual generated battle, variable projectile count | 85.67 | 85.75 | 12.2 ms | PASS 60 FPS / 20 ms |
+| Validated synthetic 2 ships / 6 crew / 32 ion projectiles; native guns removed; no in-window impacts | 85.12 | 85.18 | 12.2 ms | PASS 60 FPS / 20 ms |
+
+Both use 15-second measured windows after warm-up. Submission counters do not
+claim GPU-completed frames. Software fallback remains explicitly below target.
+
+Isolated Node 20.19.2 simulation measurements, 40 warm-up plus 400 measured
+`game.step` ticks, same CPU/31.71 GiB RAM:
+
+| Workload before every tick | p50 | p95 | Limit/result |
+|---|---:|---:|---|
+| 2 ships / 6 living crew / 32 projectiles / 4 fires / 4 leaks | 0.3591 ms | 0.9653 ms | <5 ms PASS |
+| 4 ships / 32 living crew / 256 projectiles / 8 fires / 8 leaks | 0.7798 ms | 2.2107 ms | <15 ms PASS |
+
+These are disclosed synthetic fixtures replenishing ion projectiles and hazard
+floors, with native guns removed. AI, impacts, atmosphere and physical tasks
+execute normally. Invariant/save checks are outside the timed tick. Earlier
+contended-host samples failed; these isolated results do not erase them.
+
+The deterministic survival soak passed two **72,000-tick** runs (144,000 checked
+steps total), 12 save/load round-trips, zero resets. This is safe-station
+survival, not 60 minutes of combat or human play.
+
+Chromium production endurance passed **25 real restart/load/battle cycles over
+1,236.5 seconds (20.6 minutes)**, zero page errors, one canvas each cycle.
+Post-GC retained JS heap: warm-window maximum 12,396,472 bytes; final-window
+maximum 11,931,896 bytes, **-3.75%**. This measures JS heap, not GPU/process
+memory or every possible interaction.
+
+`careers.test.ts` passes **30 legal new-run-to-extraction scenarios**, seeds
+1,2,3,4,5,6,7,9,42,12345 per career. Explorer uses surveys and all ten Nacre
+compartments; trader uses deliveries/marginal trades/charts; combat uses fitted
+raider battles and guardian combat. A forced guardian retreat now explicitly
+secures passage with **zero destruction payout**; player escape does not.
+These are automated viability scenarios, not human fun/duration evidence.
+
+Physical emergency production controls also pass extinguishing, breach/system
+repair, powered-medbay healing and exterior-vent warning/closure in Chromium.
+The complete initial-battle-to-win browser driver is still being refined;
+failed driver attempts are not counted as battle acceptance.
+
+## External validation limitations
+
+Hosted CI cannot run: GitHub's check annotation says **“GitHub Actions hosted
+runners are disabled for this repository”** before any workflow step executes.
+[Observed run](https://github.com/miplese_microsoft/starship/actions/runs/41372877014).
+This is not a successful CI result, nor an application test failure. Local
+test/build/browser evidence is recorded separately; administrator enablement
+is external to the game.
+
+No human timing/fun waiver has been received. The coordinating session sent
+the requested critical consultation and is monitoring that specific thread;
+personal contact data is deliberately not stored in the repository.
+
+## Requirement traceability at this checkpoint
+
+“Implemented/tested” below identifies concrete automated coverage; it does not
+supersede an unmet human, visual or performance gate.
+
+| IDs | Implementation and evidence | Residual acceptance |
+|---|---|---|
+| R01 | `game.ts`, controller terminal persistence; legal-command victory and real-control full Expedition/debrief, abandonment/reload; simulation defeat | Full browser defeat/recovery matrix pending |
+| R02 | Active simulation minutes shown separately in debrief | 90–180 minute human pacing unverified |
+| R03–R04 | `game.ts` travel, functional sensors, passive/active/probe/physical/purchased knowledge; strategic regressions and full browser route | Exhaustive sensor-jam browser matrix pending |
+| R05 | `expedition.ts` seven survey types/values, one-time records/sales and permanent objective knowledge; mission/strategy tests | All-type production-control tour pending |
+| R06 | Four risk bands, truthful station availability, incoming-contact choice, finite fuel/rescue; full route evasion/refueling | Human preparation clarity unverified |
+| R07–R09 | `region.ts` six economies/ten goods, integrated marginal quotes, bounded dynamic events/stock, mass/volume/reservations/stale snapshots; 100-seed graph and reversal tests | Extended balance scenarios pending |
+| R10–R12d | `missions.ts`, customs gateway, faction/fitting gates and eleven distinct mission categories; 38 mission tests plus actual freight/field claim UI | Full browser branch matrix pending |
+| R13–R15 | Physical search/engineering/recall, unique compartment supplies/logs/recorder/survivor/threat, persistent depletion, risk countdown and finite equipped mining; tactical/mission regressions | Complete browser recovery narrative pending |
+| R16–R20 | `ships.ts`, `validate.ts`, shared tactical rules, room graph, pressure/fire/breach/manning/skills/health; tactical tests and actual door/target controls | Complete emergency browser task chain pending |
+| R21 | Future-only extras not required; functioning minimal drones/tether are present for required EW/boarding | No cloaking/shield-modulation claim |
+| R22–R27 | `tactical.ts` six weapon families, evasion/shields, paid directional attack/defense, EW variants, physical boarding/combat/sabotage/capture, shared-rule doctrines and one-time rewards; tactical regressions | Comprehensive UI counterplay coverage pending |
+| R28–R29 | Economy/size/tech/faction fitting availability, functional reactor/engine/shield/sensor/cargo/fuel/armor/EW/berth upgrades, visible weapon allocation priority; distinct fitted careers tested | Human balance/UX unverified |
+| R30–R31 | Seeded routes/markets/contracts/rewards/crew/loadouts; 100-seed structural checks; ten full legal victories per distinct fitted career | Human balance unverified |
+| R32–R33 | One complete player ship; no meta unlock or permanent stat-bonus system | Additional classes/meta are not claimed |
+| R34–R35 | Standalone typed 20 Hz simulation, React/Pixi/event separation, frame-subdivision/command-replay/combat-continuation tests, strict build; measured tick/render and bounded soak results above | Software fallback misses rendering target |
+| R36 | Original generated hull/backgrounds and procedural room/crew/effect graphics; provenance `public/art/manifest.json`; actual screenshots inspected | Final all-category visual acceptance pending |
+| R37 | Synthesized event audio with mute/volume, matching textual ship log | Audible cue completeness/listening gate pending |
+| R38 | Actual spatial Laser/Ion targeting over hostile crew, live combat save/reload, tactical first-battle win/surrender and departure regressions | Full emergency/defeat production journey pending |
+| R39 | Exact first-system counts and ten goods across 100 seeds; real-control commerce/freight/survey | 20–30 minute first-time human sandbox evidence absent |
+| R40 | No manual flight, multiplayer, surface/MMO or cloud-account dependency | Implemented scope boundary |
+| R41 | Real ship emergencies, recall, convoy/cargo/customs and deep-space choices interact | Human emergent-story/opportunity-cost protocol pending |
+| R42 | Accepted seven-document design baseline and four-role review record | M0 complete |

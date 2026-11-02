@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { arch, cpus, freemem, platform, release, totalmem } from 'node:os';
+import { performance } from 'node:perf_hooks';
+import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
 import { createCrew, createShip } from '../../src/content/ships';
 import { WEAPONS } from '../../src/content/weapons';
 import { currentLocation, currentSystem, event, income, player, random } from '../../src/sim/core';
 import { path, tacticalCommand, tacticalTick } from '../../src/sim/tactical';
-import { createGame, step } from '../../src/sim/game';
+import { command, createGame, step } from '../../src/sim/game';
+import { decode, encode } from '../../src/game/persistence';
 import type { Command, Family, GameState, Ship, SystemKind } from '../../src/sim/types';
 
 function fixture(combat = true): GameState {
@@ -46,6 +50,137 @@ function away(state: GameState, destination: Ship, kind: SystemKind = 'cockpit')
   crew.path = [];
   crew.task = 'idle';
   return crew;
+}
+
+function bounded(value: number, min: number, max: number, label: string): void {
+  if (!Number.isFinite(value) || value < min || value > max) throw new Error(`${label}: ${value} is outside ${min}..${max}`);
+}
+
+function simulationInvariants(state: GameState): void {
+  if (state.phase !== 'expedition') throw new Error(`Workload terminated at tick ${state.tick}: ${state.phase}`);
+  bounded(state.tick, 0, Number.MAX_SAFE_INTEGER, 'tick');
+  bounded(state.rng, 0, 0xffffffff, 'rng');
+  bounded(state.nextId, 1, Number.MAX_SAFE_INTEGER, 'nextId');
+  bounded(state.ships.length, 1, 4, 'ship count');
+  bounded(state.crew.length, 1, 32, 'crew count');
+  bounded(state.projectiles.length, 0, 256, 'projectile count');
+  bounded(state.events.length, 0, 200, 'event count');
+  bounded(state.queue.length, 0, 100, 'queued command count');
+  bounded(state.commandHistory?.length ?? 0, 0, 100, 'command history count');
+  for (const ship of state.ships) {
+    bounded(ship.hull, 0, ship.maxHull, 'hull');
+    bounded(ship.fuel, 0, ship.maxFuel, 'fuel');
+    bounded(ship.missiles, 0, 10000, 'ammunition');
+    bounded(ship.credits, 0, Infinity, 'credits');
+    bounded(ship.debt, 0, 150, 'debt');
+    bounded(ship.ftl, 0, 600, 'FTL charge');
+    bounded(ship.maneuver, 0, 100, 'maneuver');
+    bounded(ship.capture, 0, 100, 'capture');
+    bounded(ship.aiTick, 0, Infinity, 'AI timer');
+    bounded(ship.shieldProgress, 0, Infinity, 'shield recharge');
+    for (const armor of Object.values(ship.armor)) bounded(armor, 0, Infinity, 'armor');
+    let used = 0;
+    for (const system of ship.systems) {
+      bounded(system.health, 0, system.max, 'system health');
+      bounded(system.ion, 0, Infinity, 'ion lock');
+      const capacity = system.health > 0 && system.ion <= 0 ? Math.min(system.cap, Math.ceil(system.cap * system.health / system.max)) : 0;
+      bounded(system.power, 0, capacity, 'system allocation');
+      if (!Number.isInteger(system.power)) throw new Error('Fractional system allocation');
+      used += system.power;
+    }
+    const reactor = unit(ship, 'reactor');
+    const output = reactor.health > 0 && reactor.ion <= 0 ? Math.floor(ship.reactor * reactor.health / reactor.max) : 0;
+    bounded(used, 0, output, 'reactor allocation');
+    const shields = unit(ship, 'shields');
+    bounded(ship.shields, 0, shields.health > 0 && shields.ion <= 0 ? Math.floor(shields.power / 2) : 0, 'shield layers');
+    for (const room of ship.rooms) {
+      bounded(room.oxygen, 0, 1, 'oxygen');
+      bounded(room.fire, 0, 1, 'fire');
+      bounded(room.breach, 0, 10, 'breach');
+    }
+    for (const door of ship.doors) bounded(door.health, 0, 100, 'door health');
+    for (const weapon of ship.weapons) bounded(weapon.charge, 0, WEAPONS[weapon.family].chargeTicks, 'weapon charge');
+    let cargo = 0;
+    for (const amount of Object.values(ship.cargo)) {
+      bounded(amount, 0, Infinity, 'cargo quantity');
+      if (!Number.isInteger(amount)) throw new Error('Fractional cargo quantity');
+      cargo += amount;
+    }
+    bounded(cargo, 0, ship.capacity, 'cargo volume');
+  }
+  for (const crew of state.crew) {
+    bounded(crew.health, 0, 100, 'crew health');
+    bounded(crew.progress, 0, Infinity, 'crew progress');
+    const ship = state.ships.find(candidate => candidate.id === crew.shipId);
+    if (!ship || !ship.rooms.some(room => room.id === crew.room) || crew.path.some(id => !ship.rooms.some(room => room.id === id))) throw new Error('Invalid physical crew location/path');
+  }
+  for (const projectile of state.projectiles) {
+    bounded(projectile.remaining, 0, projectile.total, 'projectile flight');
+    const target = state.ships.find(ship => ship.id === projectile.target);
+    if (!state.ships.some(ship => ship.id === projectile.source) || !target?.rooms.some(room => room.id === projectile.room)) throw new Error('Invalid projectile references');
+  }
+  for (const market of state.markets) {
+    for (const stock of Object.values(market.stock)) bounded(stock, 0, 60, 'market stock');
+    for (const price of Object.values(market.prices)) bounded(price, 0, Infinity, 'market price');
+  }
+  for (const contract of state.contracts) {
+    bounded(contract.progress, 0, Infinity, 'contract progress');
+    bounded(contract.quantity, 0, Infinity, 'contract quantity');
+  }
+  for (const event of state.events) if (event.message.length > 512) throw new Error('Journal message exceeds cap');
+}
+
+function hardware() {
+  const processors = cpus();
+  return {
+    os: `${platform()} ${release()} ${arch()}`, cpu: processors[0]?.model ?? 'unavailable',
+    logicalProcessors: processors.length, totalMemoryGiB: +(totalmem() / 1024 ** 3).toFixed(2),
+    freeMemoryGiB: +(freemem() / 1024 ** 3).toFixed(2), node: process.version,
+    renderer: 'None: headless Node simulation; browser/GPU rendering not measured',
+  };
+}
+
+function loadFixture(stress: boolean): GameState {
+  const state = createGame(12345);
+  state.userPaused = false;
+  state.ships.push(createShip('enemy', true));
+  state.crew.push(...createCrew('enemy', true));
+  if (stress) {
+    for (const id of ['enemy-2', 'enemy-3']) {
+      state.ships.push(createShip(id, true));
+      state.crew.push(...createCrew(id, true));
+    }
+    for (const ship of state.ships) {
+      for (let index = 0; index < 5; index++) {
+        const crew = createCrew(ship.id, ship.id !== 'player')[index % 3];
+        crew.id = `${ship.id}-load-${index}`;
+        crew.room = ship.rooms[index + 3].id;
+        state.crew.push(crew);
+      }
+    }
+  }
+  for (const ship of state.ships) ship.weapons = [];
+  state.encounter = 'hostile';
+  return state;
+}
+
+function maintainLoad(state: GameState, count: number): void {
+  for (const ship of state.ships) {
+    room(ship, 'weapons').fire = Math.max(.3, room(ship, 'weapons').fire);
+    room(ship, 'doors').fire = Math.max(.3, room(ship, 'doors').fire);
+    room(ship, 'engines').breach = Math.max(.2, room(ship, 'engines').breach);
+    room(ship, 'medbay').breach = Math.max(.1, room(ship, 'medbay').breach);
+  }
+  while (state.projectiles.length < count) {
+    const id = state.nextId++;
+    const source = state.ships[id % state.ships.length];
+    const target = source.id === 'player' ? state.ships[1 + id % (state.ships.length - 1)] : player(state);
+    const duration = 1 + id % 20;
+    state.projectiles.push({
+      id: `load-${id}`, source: source.id, target: target.id, room: room(target, 'sensors').id,
+      family: 'ion', remaining: duration, total: duration,
+    });
+  }
 }
 
 describe('content and core contracts', () => {
@@ -869,6 +1004,63 @@ describe('boarding, capture, surrender, AI and encounter rewards', () => {
     expect(player(stalemate).credits).toBe(60);
   });
 
+  it.each(['escape', 'surrender', 'ceasefire', 'destroyed', 'capture'] as const)('records a retreat outcome exclusively for escape (%s)', outcome => {
+    const state = fixture();
+    const enemy = state.ships[1];
+    enemy.weapons = [];
+    if (outcome === 'escape') {
+      enemy.hull = 8;
+      enemy.ftl = 600;
+      state.tick = 39;
+      advance(state);
+      expect(state.encounter).toBe('none');
+      expect(enemy.fuel).toBe(6);
+      expect(player(state).credits).toBe(60);
+    } else if (outcome === 'surrender' || outcome === 'ceasefire') {
+      state.encounter = 'surrender';
+      if (outcome === 'ceasefire') state.rewards.push('stalemate:sol:station:e');
+      expect(tacticalCommand(state, { type: 'surrender', accept: true })?.ok).toBe(true);
+      expect(player(state).credits).toBe(outcome === 'ceasefire' ? 60 : 80);
+    } else if (outcome === 'destroyed') {
+      enemy.hull = 0;
+      advance(state);
+      expect(player(state).credits).toBe(85);
+    } else {
+      state.crew = state.crew.filter(crew => crew.home === 'p');
+      away(state, enemy);
+      advance(state, 100);
+      expect(state.encounter).toBe('won');
+      expect(player(state).credits).toBe(100);
+    }
+    const markers = state.rewards.filter(token => token.startsWith('retreat:'));
+    expect(markers).toEqual(outcome === 'escape' ? ['retreat:sol:station'] : []);
+    const credits = player(state).credits;
+    advance(state, 10);
+    expect(state.rewards.filter(token => token.startsWith('retreat:'))).toEqual(markers);
+    expect(player(state).credits).toBe(credits);
+  });
+
+  it('deduplicates a retreat outcome across escaping contacts at the same location without salvage income', () => {
+    const state = fixture();
+    const first = state.ships[1];
+    first.hull = 8;
+    first.ftl = 600;
+    state.tick = 39;
+    advance(state);
+    const second = createShip('second', true);
+    second.hull = 8;
+    second.ftl = 600;
+    state.ships.push(second);
+    state.crew.push(...createCrew(second.id, true));
+    state.encounter = 'hostile';
+    state.tick = 79;
+    advance(state);
+    expect(state.encounter).toBe('none');
+    expect(state.rewards.filter(token => token === 'retreat:sol:station')).toHaveLength(1);
+    expect(state.rewards.filter(token => token.startsWith('encounter:'))).toHaveLength(2);
+    expect(player(state).credits).toBe(60);
+  });
+
   it('AI uses doctrine, repairs physically and does not target based on hidden interior/cargo', () => {
     const state = fixture();
     const enemy = state.ships[1];
@@ -1078,6 +1270,88 @@ describe('electronic warfare and deterministic continuation', () => {
     expect(unit(player(state), 'ew').power).toBe(0);
   });
 
+  describe('public combat departure persistence', () => {
+    it.each(['destroyed', 'surrender'] as const)('saves and continues after the first generated raider is %s and the captain returns to Haven', outcome => {
+      const state = createGame(12345);
+      const issuePublic = (order: Command) => expect(command(state, order), JSON.stringify(order)).toEqual({ ok: true });
+      const haven = currentLocation(state);
+      const raiderLocation = currentSystem(state).locations.find(location => location.kind === 'pirate')!;
+      expect(haven.name).toContain('Haven');
+      issuePublic({ type: 'travel', destination: raiderLocation.id, system: false });
+      for (let ticks = 0; state.travel && ticks < 200; ticks++) step(state);
+      expect(state.travel).toBeNull();
+      expect(state.locationId).toBe(raiderLocation.id);
+      expect(state.encounter).toBe('hostile');
+      const home = player(state);
+      const enemy = state.ships.find(ship => ship.doctrine === 'pirate' || ship.doctrine === 'military')!;
+      const weaponsRoom = room(home, 'weapons');
+      const laser = home.weapons.find(weapon => weapon.family === 'laser')!;
+      const ion = home.weapons.find(weapon => weapon.family === 'ion')!;
+      issuePublic({ type: 'target', weapon: laser.id, room: room(enemy, 'weapons').id, auto: true });
+      issuePublic({ type: 'target', weapon: ion.id, room: room(enemy, 'reactor').id, auto: true });
+      let offeredSurrender = false;
+      for (let ticks = 0; ticks < 4000 && state.phase === 'expedition' && state.encounter !== 'won'; ticks++) {
+        if (state.encounter === 'surrender') {
+          offeredSurrender = true;
+          issuePublic({ type: 'surrender', accept: outcome === 'surrender' });
+          if (outcome === 'surrender') break;
+        }
+        const weaponSystem = unit(home, 'weapons');
+        const reactor = unit(home, 'reactor');
+        const output = reactor.health > 0 && reactor.ion <= 0 ? Math.floor(home.reactor * reactor.health / reactor.max) : 0;
+        const allowed = weaponSystem.health > 0 && weaponSystem.ion <= 0
+          ? Math.min(weaponSystem.cap, Math.ceil(weaponSystem.cap * weaponSystem.health / weaponSystem.max), 2) : 0;
+        if (weaponSystem.power < allowed && home.systems.reduce((sum, candidate) => sum + candidate.power, 0) < output) {
+          issuePublic({ type: 'power', ship: home.id, system: 'weapons', delta: 1 });
+        }
+        const engineer = [...state.crew].filter(crew => crew.home === home.id && crew.shipId === home.id && crew.health > 0)
+          .sort((a, b) => b.skills.repair - a.skills.repair)[0];
+        const work = weaponsRoom.fire > 0 ? 'extinguish' : weaponSystem.health < weaponSystem.max || weaponsRoom.breach > 0 ? 'repair' : null;
+        if (engineer && work && (engineer.task !== work || (engineer.path.at(-1) ?? engineer.room) !== weaponsRoom.id)) {
+          issuePublic({ type: 'crew', crew: engineer.id, room: weaponsRoom.id, task: work });
+        }
+        step(state);
+      }
+      expect(state.phase).toBe('expedition');
+      expect(state.encounter).toBe('won');
+      expect(enemy.doctrine).toBe('derelict');
+      if (outcome === 'destroyed') expect(enemy.hull).toBe(0);
+      else {
+        expect(offeredSurrender).toBe(true);
+        expect(enemy.hull).toBeGreaterThan(0);
+      }
+      step(state);
+      expect(raiderLocation.depleted).toBe(true);
+      expect(() => decode(encode(state))).not.toThrow();
+      const rewards = state.rewards.filter(token => token.startsWith('encounter:'));
+      expect(rewards).toHaveLength(1);
+      issuePublic({ type: 'travel', destination: haven.id, system: false });
+      for (let ticks = 0; state.travel && ticks < 200; ticks++) step(state);
+      expect(state.travel).toBeNull();
+      expect(state.locationId).toBe(haven.id);
+      expect(state.encounter).toBe('none');
+      expect(state.ships.map(ship => ship.id)).toEqual([home.id]);
+      expect(state.wrecks?.[raiderLocation.id]).toBeUndefined();
+      expect(Object.keys(state.wrecks ?? {}).every(id => state.region.some(system => system.locations.some(location => location.id === id && location.kind === 'derelict')))).toBe(true);
+      const resumed = decode(encode(state));
+      expect(resumed).toEqual(state);
+      const credits = player(resumed).credits;
+      const nextStation = currentSystem(state).locations.find(location => location.kind === 'station' && location.id !== haven.id)!;
+      const onward: Command = { type: 'travel', destination: nextStation.id, system: false };
+      expect(command(state, onward)).toEqual({ ok: true });
+      expect(command(resumed, onward)).toEqual({ ok: true });
+      for (let ticks = 0; ticks < 200 && (state.travel || resumed.travel); ticks++) {
+        step(state);
+        step(resumed);
+      }
+      expect(resumed.locationId).toBe(nextStation.id);
+      expect(resumed).toEqual(state);
+      expect(player(resumed).credits).toBe(credits);
+      expect(resumed.rewards.filter(token => token.startsWith('encounter:'))).toEqual(rewards);
+      expect(() => decode(encode(resumed))).not.toThrow();
+    });
+  });
+
   it('hijacks only actual drone modules and intercepted signals persist without income duplication', () => {
     const state = ewFixture();
     const before = structuredClone(state);
@@ -1174,4 +1448,123 @@ describe('electronic warfare and deterministic continuation', () => {
     expect(tacticalCommand(state, { type: 'maneuver', bearing: 'stern' })?.ok).toBe(false);
     expect(state).toEqual(before);
   });
+});
+
+describe('headless simulation acceptance gates', () => {
+  it.each([
+    { name: 'baseline', stress: false, ships: 2, crew: 6, projectiles: 32, p95LimitMs: 5 },
+    { name: 'stress', stress: true, ships: 4, crew: 32, projectiles: 256, p95LimitMs: 15 },
+  ])('measures $name actual expedition tick p95 with maintained projectiles, fires and leaks', async workload => {
+    let state = loadFixture(workload.stress);
+    const machine = hardware();
+    const durations: number[] = [];
+    const start = performance.now();
+    const warmup = 40, samples = 400;
+    let roundTrips = 0, livingMin = Infinity, firesMin = Infinity, leaksMin = Infinity;
+    for (let index = 0; index < warmup + samples; index++) {
+      if (index % 32 === 0) await yieldToEventLoop();
+      if (performance.now() - start > 115_000) throw new Error(`${workload.name} exceeded its 120-second runtime budget after ${index} ticks`);
+      maintainLoad(state, workload.projectiles);
+      if (state.ships.length !== workload.ships || state.crew.length !== workload.crew || state.projectiles.length !== workload.projectiles) throw new Error('Maintained workload counts do not match benchmark');
+      livingMin = Math.min(livingMin, state.crew.filter(crew => crew.health > 0).length);
+      firesMin = Math.min(firesMin, state.ships.reduce((sum, ship) => sum + ship.rooms.filter(room => room.fire > 0).length, 0));
+      leaksMin = Math.min(leaksMin, state.ships.reduce((sum, ship) => sum + ship.rooms.filter(room => room.breach > 0).length, 0));
+      const before = performance.now();
+      step(state);
+      const elapsed = performance.now() - before;
+      if (index >= warmup) durations.push(elapsed);
+      simulationInvariants(state);
+      if (index >= warmup && (index - warmup + 1) % 100 === 0) {
+        const bytes = encode(state);
+        state = decode(bytes);
+        simulationInvariants(state);
+        expect(encode(state)).toBe(bytes);
+        roundTrips++;
+      }
+    }
+    const sorted = [...durations].sort((a, b) => a - b);
+    const p95 = sorted[Math.ceil(sorted.length * .95) - 1];
+    const performanceGateEnabled = process.env.PERFORMANCE === '1';
+    console.info('[simulation-gate]', JSON.stringify({
+      name: workload.name, hardware: machine, phase: state.phase, seed: state.seed,
+      measuredTicks: durations.length, warmupTicks: warmup, advancedTicks: state.tick,
+      ships: workload.ships, crew: workload.crew, livingCrewMinimum: livingMin,
+      projectilesBeforeEveryTick: workload.projectiles, firesMinimum: firesMin, leaksMinimum: leaksMin,
+      fullSaveRoundTrips: roundTrips, p50Ms: sorted[Math.floor(sorted.length / 2)], p95Ms: p95,
+      maxMs: sorted[sorted.length - 1], p95LimitMs: workload.p95LimitMs, wallMs: performance.now() - start,
+      performanceGateEnabled, performanceThresholdMet: p95 < workload.p95LimitMs,
+      performanceGateStatus: performanceGateEnabled ? p95 < workload.p95LimitMs ? 'passed' : 'failed' : 'not requested; invariant workload only',
+      workload: 'Real game.step including AI, ion impacts, atmosphere, fire and physical tasks. Synthetic fixture replenishes ion projectiles and fire/breach floors before each tick; native guns removed. Loading/invariant checks excluded from tick timing. No rendering.',
+    }));
+    expect(durations).toHaveLength(samples);
+    expect(livingMin).toBe(workload.crew);
+    expect(state.tick).toBe(warmup + samples);
+    expect(roundTrips).toBe(4);
+    if (performanceGateEnabled) expect(p95).toBeLessThan(workload.p95LimitMs);
+  }, 120_000);
+
+  it('advances a full deterministic 60-simulation-minute survival soak with per-tick invariants and save continuation', async () => {
+    const seed = 12345;
+    const continuous = createGame(seed);
+    let resumed = createGame(seed);
+    continuous.userPaused = false;
+    resumed.userPaused = false;
+    const machine = hardware();
+    const start = performance.now();
+    const ticks = 72_000, saveEvery = 6000;
+    let roundTrips = 0, checkedStates = 0;
+    const bearings = ['port', 'stern', 'starboard', 'bow'] as const;
+    console.info('[simulation-gate]', JSON.stringify({ name: 'soak-start', hardware: machine, requestedTicksPerRun: ticks, runs: 2 }));
+    for (let index = 0; index < ticks; index++) {
+      if (index % 128 === 0) {
+        await yieldToEventLoop();
+        if (performance.now() - start > 115_000) throw new Error(`Soak exceeded its 120-second runtime budget at ${index}/${ticks} ticks per run; no completion claim`);
+      }
+      const orders: Command[] = [];
+      if (index % 2000 === 0) {
+        const home = player(continuous);
+        const engineer = continuous.crew.find(crew => crew.skills.repair === 3)!;
+        const destination = room(home, index % 4000 === 0 ? 'oxygen' : 'engines');
+        orders.push({ type: 'crew', crew: engineer.id, room: destination.id, task: 'operate' });
+      }
+      if (index % 6000 === 0) orders.push({ type: 'maneuver', bearing: bearings[Math.floor(index / 6000) % bearings.length] });
+      for (const order of orders) {
+        expect(command(continuous, order)).toEqual({ ok: true });
+        expect(command(resumed, order)).toEqual({ ok: true });
+      }
+      step(continuous);
+      simulationInvariants(continuous);
+      step(resumed);
+      simulationInvariants(resumed);
+      checkedStates += 2;
+      if ((index + 1) % saveEvery === 0) {
+        expect(resumed).toEqual(continuous);
+        const bytes = encode(resumed);
+        resumed = decode(bytes);
+        simulationInvariants(resumed);
+        expect(encode(resumed)).toBe(bytes);
+        expect(resumed).toEqual(continuous);
+        roundTrips++;
+        console.info('[simulation-gate]', JSON.stringify({ name: 'soak-progress', ticksPerRun: index + 1, actualStepCalls: checkedStates, fullSaveRoundTrips: roundTrips, wallMs: performance.now() - start }));
+      }
+    }
+    const wallMs = performance.now() - start;
+    console.info('[simulation-gate]', JSON.stringify({
+      name: '60-minute deterministic survival soak', hardware: machine, seed,
+      ticksPerRun: ticks, runs: 2, actualStepCalls: checkedStates, invariantsCheckedAfterEveryStep: true,
+      continuousFinalTick: continuous.tick, resumedFinalTick: resumed.tick, simulationMinutesPerRun: ticks / 20 / 60,
+      wallMs, fullSaveRoundTrips: roundTrips, saveEveryTicks: saveEvery, expeditionResets: 0,
+      finalPhase: resumed.phase, eventCount: resumed.events.length, projectiles: resumed.projectiles.length,
+      livingCrew: resumed.crew.filter(crew => crew.health > 0).length,
+      workload: 'Valid safe-station survival fixture, one player ship/three living crew, no enemy, fire, breach or projectile injection and no resource/health resets. Real game.step runs crew movement, maneuvers, power/atmosphere/FTL and strategic economy for all 72000 ticks in each run. Not combat survival, human playtime, rendering, or browser soak.',
+    }));
+    expect(continuous.tick).toBe(ticks);
+    expect(resumed.tick).toBe(ticks);
+    expect(checkedStates).toBe(144_000);
+    expect(roundTrips).toBe(12);
+    expect(resumed).toEqual(continuous);
+    expect(resumed.crew.every(crew => crew.health > 0)).toBe(true);
+    expect(wallMs).toBeLessThan(120_000);
+    expect(() => decode(encode(resumed))).not.toThrow();
+  }, 120_000);
 });

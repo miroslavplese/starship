@@ -634,6 +634,7 @@ export default function Scene(props: SceneProps) {
   const qualityRef = useRef(quality);
   qualityRef.current = quality;
   const [qualityDescription, setQualityDescription] = useState('detecting renderer');
+  const [renderedFPS, setRenderedFPS] = useState<number | null>(null);
 
   useEffect(() => {
     const element = host.current;
@@ -724,6 +725,8 @@ export default function Scene(props: SceneProps) {
         let lastTick = latest.current.state.tick;
         let tickTime = performance.now() - 150;
         let appliedQuality: Quality | undefined;
+        let measuredSince = performance.now();
+        let submittedFrames = 0;
         const frame = (time: number) => {
           if (cancelled) return;
           frameId = requestAnimationFrame(frame);
@@ -814,7 +817,16 @@ export default function Scene(props: SceneProps) {
               }
             }
           }
-          if (changed) app.render();
+          if (changed) {
+            app.render();
+            submittedFrames++;
+          }
+          const measuredMS = time - measuredSince;
+          if (measuredMS >= 1000) {
+            setRenderedFPS(submittedFrames * 1000 / measuredMS);
+            submittedFrames = 0;
+            measuredSince = time;
+          }
         };
         frameId = requestAnimationFrame(frame);
       } catch (error) {
@@ -835,19 +847,28 @@ export default function Scene(props: SceneProps) {
       Tactical graphics are unavailable. Room and crew orders remain available in the control panels.
     </p>}
     {!failure && <label style={{
-      position: 'absolute', right: 12, bottom: 8, display: 'flex', alignItems: 'center', gap: 7,
-      color: '#b8ccd9', background: '#08111deb', border: '1px solid #3c5264', padding: '4px 7px', fontSize: 11,
+      position: 'absolute', right: 12, top: 6, display: 'flex', alignItems: 'center', gap: 6,
+      color: '#b8ccd9', background: '#08111df2', border: '1px solid #3c5264', padding: '3px 6px',
+      fontSize: 11, lineHeight: '16px', whiteSpace: 'nowrap',
     }}>
       Graphics
       <select aria-label="Tactical graphics quality" value={quality} onChange={event => setQuality(event.target.value as Quality)}
         onKeyDown={event => event.stopPropagation()}
-        style={{ color: '#dceaf3', background: '#132231', border: '1px solid #526b7e', fontSize: 11 }}>
+        style={{ color: '#dceaf3', background: '#132231', border: '1px solid #526b7e', fontSize: 11,
+          height: 22, padding: '2px 4px', lineHeight: '16px' }}>
         <option value="auto">Auto</option>
         <option value="high">High</option>
         <option value="balanced">Balanced</option>
         <option value="performance">Performance</option>
       </select>
       <span>{qualityDescription}</span>
+      <output data-testid="tactical-rendered-fps" aria-label="Actual tactical rendered frames per second"
+        aria-live="off" data-rendered-fps={renderedFPS?.toFixed(1)}
+        data-render-state={renderedFPS === null ? 'measuring' : renderedFPS === 0 ? 'idle' : 'rendering'}
+        title="Successful app.render submissions per elapsed second, sampled about once per second. Zero is expected once a paused or unchanged scene settles; rAF callbacks and DOM updates are not counted.">
+        Rendered {renderedFPS === null ? '—' : renderedFPS.toFixed(1)} FPS
+        {renderedFPS === null ? ' · measuring' : renderedFPS === 0 ? ' · idle (paused / unchanged)' : ''}
+      </output>
     </label>}
   </div>;
 }

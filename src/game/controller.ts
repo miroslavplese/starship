@@ -32,7 +32,9 @@ export class GameController {
     }
     const result = command(this.state, c);
     this.message = result.ok ? this.state.events.at(-1)?.message ?? 'Command accepted.' : result.message;
-    this.notify(); return result;
+    if (result.ok && this.state.phase !== 'expedition' && !this.training) this.persist();
+    else this.notify();
+    return result;
   }
   advance(ms: number) {
     if (this.paused || this.modal || this.state.phase !== 'expedition') { this.accumulator = 0; return; }
@@ -49,7 +51,10 @@ export class GameController {
       this.accumulator -= 50; updated = true;
       if (this.paused) break;
     }
-    if (updated) this.notify();
+    if (updated) {
+      if (this.state.phase !== 'expedition' && !this.training) this.persist();
+      else this.notify();
+    }
   }
   togglePause() { this.paused = !this.paused; this.reason = this.paused ? 'Captain command' : ''; this.accumulator = 0; this.notify(); }
   hidden() { this.forcedPause = 'Paused while away'; this.reason = 'Paused while away'; this.accumulator = 0; this.notify(); }

@@ -1,8 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { command, createGame, step } from '../../src/sim/game';
 import { cargoUsed, generateRegion, GOODS, price } from '../../src/content/region';
 import { decode, encode, save, SAVE_KEY, PREVIOUS_KEY } from '../../src/game/persistence';
 import { GameController } from '../../src/game/controller';
+import { createShip } from '../../src/content/ships';
 import type { Command, GameState } from '../../src/sim/types';
 
 function run(s: GameState, count: number) { for (let i = 0; i < count; i++) step(s); }
@@ -129,6 +130,46 @@ describe('strategic rules', () => {
     issue(s, { type: 'service', service: 'rescue' });
     expect(p.fuel).toBe(2); expect(p.hull).toBe(8); expect(p.debt).toBe(150);
     expect(s.phase).toBe('expedition');
+  });
+  it('rejects guardian withdrawal during a pending local journey atomically', () => {
+    const s = createGame(1); s.systemId = 's7'; s.locationId = 's7-planet0';
+    s.coordinates = ['s2', 's4', 's5']; s.guardian = true;
+    issue(s, { type: 'travel', destination: 's7-beacon', system: false });
+    const before = encode(s);
+    expect(command(s, { type: 'objective', choice: 'withdraw' }).ok).toBe(false);
+    expect(encode(s)).toBe(before);
+    run(s, 140);
+    issue(s, { type: 'objective', choice: 'withdraw' });
+    expect(s.systemId).toBe('s6'); expect(s.locationId).toBe('s6-station');
+    expect(decode(encode(s))).toEqual(s);
+    run(s, 200);
+  });
+  it('does not award guardian passage when the player jumps away', () => {
+    const s = createGame(1); s.systemId = 's7'; s.locationId = 's7-planet0';
+    s.coordinates = ['s2', 's4', 's5']; s.region.find(r => r.id === 's6')!.known = true;
+    const guardian = createShip('enemy', true); guardian.name = 'Cartographer Sentinel'; guardian.doctrine = 'military';
+    s.ships.push(guardian); s.encounter = 'hostile'; s.ships[0].ftl = 600;
+    issue(s, { type: 'travel', destination: 's6', system: true, confirm: true });
+    run(s, 100);
+    expect(s.systemId).toBe('s6'); expect(s.guardian).toBe(false);
+    expect(decode(encode(s))).toEqual(s);
+  });
+  it('persists command and simulation endings immediately without waiting for autosave', () => {
+    const data = new Map<string, string>();
+    const storage: Storage = { get length() { return data.size; }, key: i => [...data.keys()][i] ?? null, getItem: k => data.get(k) ?? null, setItem: (k, v) => { data.set(k, v); }, removeItem: k => { data.delete(k); }, clear: () => data.clear() };
+    vi.stubGlobal('localStorage', storage);
+    try {
+      const api = new GameController(1);
+      api.state.archive = true;
+      expect(api.dispatch({ type: 'objective', choice: 'handin' }).ok).toBe(true);
+      expect(decode(data.get(SAVE_KEY)! ).phase).toBe('victory');
+      api.replace(createGame(1)); api.state.ships[0].hull = 0;
+      api.togglePause(); api.advance(50);
+      expect(decode(data.get(SAVE_KEY)!).phase).toBe('defeat');
+      api.replace(createGame(1)); api.training = true;
+      api.dispatch({ type: 'abandon', confirm: true });
+      expect(decode(data.get(SAVE_KEY)!).phase).toBe('defeat');
+    } finally { vi.unstubAllGlobals(); }
   });
   it('partial wreck rooms and dead away crew survive re-entry and persistence', () => {
     const s = createGame(2);
