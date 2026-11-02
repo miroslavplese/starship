@@ -171,6 +171,12 @@ coordinates account for canvas bounding rectangle, scale and device pixel ratio.
 | Feedback layer | concise event log, tooltips, toast errors and critical alerts |
 | Pause/settings | pause reasons, audio, reduced motion, save/export/import and controls |
 
+Shared `.frame` surfaces retain 10px cut corners with matching diagonal
+background strokes, including scrollable briefing/debrief panels. The
+`--frame-edge` and `--frame-surface` properties keep alert, selection, hover
+and custom surface colors consistent; rectangular `.dialog` frames are
+excluded. `frames.spec.ts` checks rendered edge pixels, not just CSS presence.
+
 Reference HUD legend: the illustrated left canister/lock-like icon means fuel
 (`ship.fuel`, example 7); the middle projectile/tool-like icon means missile
 ammunition (`ship.missiles`, example 4); the gear means scrap/credits

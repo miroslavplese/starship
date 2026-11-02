@@ -11,6 +11,29 @@ pacing/fun gates marked **unverified**. This does not turn automated tests into
 human evidence, excuse engineering defects, or imply unrestricted acceptance.
 The engineering evidence and limitations below remain separate.
 
+## Clipped-panel border correction, 2026-11-02
+
+The shared 10px clipped frames now draw diagonal corner strokes instead of
+clipping a rectangular border and leaving open corners. Alert, selected,
+hovered and paused colors are preserved, as are scrollable frame surfaces;
+rectangular dialogs keep their existing borders. The opaque inset shadow no
+longer obscures the diagonal ends. No simulation or gameplay behavior changed.
+
+Strict TypeScript, Vite and offline-cache generation pass. New rendered-pixel
+regressions pass in Chromium and Firefox at the configured desktop viewports
+and the reported 859x655 screenshot size, including themed frames, selection,
+confirmation controls and scrolling. Existing combat/targeting/fire-breach
+visual cases also pass in both engines. The original bundle reproduces the
+missing-edge regression in both browsers.
+
+Corrected build: `index-kju6mZnS.js`, SHA-256
+`3DFB8B4160410CF0C4BB9A99B836018809486F684FA4B14FF152F570CAB2CB41`;
+`index-b9xuWPoX.css`, SHA-256
+`4631678BD32F9F3A5C9A1637F042F10BC35FE9D19F13396BFEB8F2F1956B62D9`.
+Offline cache: `starship-7d793c3fac5fa4e3`. The broader gameplay/performance
+measurements below remain historical evidence for their stated artifacts,
+not new measurements of this CSS-only correction.
+
 ## Foundation checkpoint
 
 Historical evidence from the first implementation checkpoint; subsequent

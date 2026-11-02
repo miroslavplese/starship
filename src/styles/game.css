@@ -13,3 +13,35 @@
 .weapon-tile>button:first-child{height:calc(100% - 24px);display:flex;flex-direction:column;justify-content:space-between;gap:4px;padding:6px 8px}.weapon-tile progress{height:6px}.weapon-actions{display:flex;gap:4px;height:22px;padding:0 6px 3px}.weapon-actions button{padding:1px 5px;font-size:10px;margin:0}.weapon-actions button:last-child{margin-left:auto}.weapon-tile{min-width:156px}
 .drill-banner{top:108px;padding:10px}.drill-banner details{margin:4px 0;font-size:11px}.drill-banner summary{cursor:pointer}.drill-banner strong{margin-bottom:5px}.drill-banner button{padding:5px 8px}
 .stranded-banner{position:absolute;left:25%;right:5%;top:60px;padding:14px;z-index:6;border-color:#e1c276}.stranded-banner b{font-size:13px;color:#efcf84}.stranded-banner p{font-size:12px;line-height:1.6;margin:8px 0}.stranded-banner button{font-size:11px}
+
+/* A clipped rectangular border needs a matching stroke along each 10px bevel.
+   Background layers stay attached to the frame even when its content scrolls. */
+.frame:not(.dialog) {
+  background-image:
+    linear-gradient(135deg, transparent 7.071px, var(--frame-edge, var(--line)) 7.071px 8.071px, transparent 8.071px),
+    linear-gradient(225deg, transparent 7.071px, var(--frame-edge, var(--line)) 7.071px 8.071px, transparent 8.071px),
+    linear-gradient(315deg, transparent 7.071px, var(--frame-edge, var(--line)) 7.071px 8.071px, transparent 8.071px),
+    linear-gradient(45deg, transparent 7.071px, var(--frame-edge, var(--line)) 7.071px 8.071px, transparent 8.071px),
+    var(--frame-surface, linear-gradient(140deg, rgba(17,30,41,.96), rgba(7,14,24,.94)));
+  background-size: 10px 10px, 10px 10px, 10px 10px, 10px 10px, auto;
+  background-position: left top, right top, right bottom, left bottom, left top;
+  background-repeat: no-repeat;
+  background-origin: border-box;
+  box-shadow: 0 0 0 1px #132a35, 0 0 16px #03091288;
+}
+.start-screen, .debrief {
+  --frame-surface: linear-gradient(120deg, #102230f5, #080f1bee);
+}
+.confirm-dialog {
+  --frame-surface: linear-gradient(#10202c, #10202c);
+}
+.drill-banner {
+  --frame-surface: linear-gradient(#16242ff5, #16242ff5);
+}
+.enemy-readout.quiet { --frame-edge: #527382; }
+.frame.selected { --frame-edge: #e4cc72; }
+button.frame:hover:not(.selected):not(.paused) { --frame-edge: #a6e9f4; }
+.encounter-choice { --frame-edge: #d9a25c; }
+.tutorial { --frame-edge: #b29c65; }
+.pause-button.paused { --frame-edge: #e7cd84; }
+.drill-banner, .stranded-banner { --frame-edge: #e1c276; }
