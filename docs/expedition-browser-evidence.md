@@ -28,10 +28,15 @@ failure, not counted as a clean pass. The successful repeat did not change
 source, tests or thresholds. Clean strict TypeScript/Vite/offline-cache build
 and final named-hardware timing evidence are recorded in `release-status.md`.
 
-The final corrections do not change art/layout. The six bounded visual
-captures below were taken on ec8f04c; they are not relabeled as screenshots
-from the later JavaScript bundle. Full final-build gameplay/recovery/defeat
-journeys were rerun as stated above.
+The parent subsequently inspected all six fresh `75eac32-` production visual
+captures described below, independently confirming the same eight-category
+assessment on the final bundle rather than relabeling older screenshots.
+The developer's final matrix passed **17 cases with one intentional Firefox
+offline-cache skip in 8.8 minutes**. In addition to combat, targeting, emergency
+and retreat, its bounded physical-wreck journey checks full-hold search refusal,
+blocked normal recall, priced extraction, reboarding, physical door traversal,
+Sensors search and normal recall/save. Fixtures establish the failure
+preconditions; subsequent actions use real controls and the simulation clock.
 
 ### Prior final-candidate checkpoint: ec8f04c
 
@@ -86,7 +91,7 @@ The parent inspected all six production captures from `visual.spec.ts`:
 Chromium 1664x936 and Firefox 1280x720, each showing pristine combat,
 selection/targeting and the physical fire/breach drill at High/full resolution.
 The images are retained in the development session's private artifacts as
-`{chromium,firefox}-{pristine-combat,targeting,fire-breach}.png`.
+`75eac32-{chromium,firefox}-{pristine-combat,targeting,fire-breach}.png`.
 The assessment uses the eight separate categories in `validation.md`; no
 aggregate score substitutes for an individual category.
 

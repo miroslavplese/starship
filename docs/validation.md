@@ -192,6 +192,11 @@ Ask testers to recount one emergent recovery and one opportunity-cost decision.
 If human testers are unavailable, leave pacing/fun acceptance explicitly
 unverified; do not call AI playthroughs human evidence or claim full completion.
 
+On 2026-11-02 the user explicitly authorized delivery with these human-only
+pacing/fun gates marked unverified. This scoped exception permits delivery,
+not a human-test pass or waiver of the engineering gates above. The release
+ledger and README retain the unmeasured duration and subjective-play limits.
+
 ## 7. Review/evidence ledger format
 
 Each milestone report: commit, scope, commands/results, browser/hardware,
