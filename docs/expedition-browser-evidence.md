@@ -18,6 +18,8 @@ Offline cache: `starship-4e71928d8add280e`. The same command below passed
 now has **14 cases**, adding queued fittings named `constructor`, `toString`
 and `__proto__`, with matching queue metadata so rejection exercises the
 content guard. Every rejection retains live/current/previous bytes.
+An additional complete-tree check verified matching SHA-256 contents and file
+counts for all 14 production files, not only the principal JavaScript/CSS.
 
 The independent final Vitest run passed **199/199 in 57.88 seconds**, exit 0.
 An earlier concurrent attempt reached 199 passing assertions but exited 1
