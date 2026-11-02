@@ -1,4 +1,4 @@
-import { COMPARTMENT_OUTCOMES, MISSION_BRIEFINGS } from '../content/expedition';
+import { COMPARTMENT_OUTCOMES, MISSION_BRIEFINGS, recorderKey } from '../content/expedition';
 import { cargoUsed } from '../content/region';
 import { createCrew, createShip } from '../content/ships';
 import { currentSystem, event, income, player } from './core';
@@ -8,7 +8,6 @@ const ok: Result = { ok: true };
 const reject = (message: string): Result => ({ ok: false, message });
 const reserved = (contract: Contract) => ['courier', 'freight', 'passenger', 'smuggling'].includes(contract.kind);
 const targetMission = (contract: Contract) => contract.kind === 'bounty' || contract.kind === 'escort';
-const recorderKey = (locationId: string) => `flight-recorder:${locationId}`;
 const active = (state: GameState) => state.contracts.filter(contract => contract.status === 'active');
 
 export { SURVEY_CATEGORIES, SURVEY_DESCRIPTIONS, SURVEY_VALUES, discoveryKind, surveyKind } from '../content/expedition';

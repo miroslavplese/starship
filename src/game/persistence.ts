@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { recorderKey } from '../content/expedition';
+import { GOODS, UPGRADES } from '../content/region';
 import type { GameState, Result } from '../sim/types';
 
 const finite = z.number().finite();
@@ -91,9 +93,12 @@ export function validate(data: unknown): GameState {
   const unique = (ids: string[]) => new Set(ids).size === ids.length;
   if (!unique(s.ships.map(x => x.id)) || !unique(s.crew.map(x => x.id)) || !unique(s.region.map(x => x.id)) || s.ships[0].id !== 'player') throw new Error('Duplicate or invalid entity identities.');
   const locations = s.region.flatMap(r => r.locations);
+  const recorders = new Set(locations.filter(l => l.kind === 'derelict').map(l => recorderKey(l.id)));
   const sys = s.region.find(r => r.id === s.systemId);
   if (!sys || !sys.locations.some(l => l.id === s.locationId) || !unique(locations.map(l => l.id))) throw new Error('Invalid regional location references.');
   for (const sh of [...s.ships, ...Object.values(s.wrecks ?? {})]) {
+    if (Object.entries(sh.cargo).some(([id, quantity]) => !GOODS.some(g => g.id === id) && !(quantity === 1 && recorders.has(id)))) throw new Error('Unknown cargo commodity or invalid flight recorder.');
+    if (sh.modules.some(id => !Object.hasOwn(UPGRADES, id))) throw new Error('Unknown fitted upgrade.');
     if (sh.hull > sh.maxHull || sh.fuel > sh.maxFuel || sh.systems.reduce((n, x) => n + x.power, 0) > sh.reactor || !unique(sh.rooms.map(r => r.id)) || !unique(sh.doors.map(d => d.id)) || !unique(sh.systems.map(x => x.kind))) throw new Error('Invalid ship resource or layout bounds.');
     if (sh.systems.some(x => x.health > x.max || x.power > (x.health > 0 && x.ion <= 0 ? Math.min(x.cap, Math.ceil(x.cap * x.health / x.max)) : 0))) throw new Error('Invalid system power or health.');
     const reactor = sh.systems.find(x => x.kind === 'reactor');

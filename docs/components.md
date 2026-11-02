@@ -183,6 +183,11 @@ export. Import uses a maximum size and validates every entity/reference before
 swapping state. Terminal saves load to their result screen, never a live dead
 ship. New-run confirmation protects an existing save.
 
+Cargo and fitted-module IDs must resolve to authored content. The sole dynamic
+cargo ID is a unique flight recorder: its referenced location must be an actual
+derelict and its quantity must be one. Mission recovery and persistence share
+the same recorder-ID constructor; a matching prefix alone is not validation.
+
 Audio adapter consumes events, never causes simulation effects. It starts only
 after a user gesture and supports master/effects volume and mute. Synthesized
 original cues can cover charge, shot, hit, breach, oxygen, jump and discovery.

@@ -3,6 +3,8 @@ import type { GameState, Location, MissionKind, SystemKind } from '../sim/types'
 export const SURVEY_CATEGORIES = ['planetary', 'mineral', 'route', 'anomaly', 'biological', 'ruin', 'faction'] as const;
 export type SurveyKind = typeof SURVEY_CATEGORIES[number];
 
+export const recorderKey = (locationId: string) => `flight-recorder:${locationId}`;
+
 export const SURVEY_VALUES: Record<SurveyKind, number> = {
   planetary: 25, mineral: 20, route: 15, anomaly: 35, biological: 30, ruin: 35, faction: 20,
 };
