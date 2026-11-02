@@ -20,8 +20,17 @@ during play. Keep local-save JSON exports as backups.
 ```powershell
 npm test
 npx playwright install chromium firefox
+npm run build
 npm run test:e2e
 ```
+
+`tests/e2e/expedition.spec.ts` completes a new Expedition using production
+controls, including freight, all three coordinates, survey/fuel preparation,
+save/continue, guardian passage, archive extraction and a persisted victory.
+It uses the player's safe-speed control, not hidden state or fixture saves.
+For parallel worktrees, set `STARSHIP_TEST_PORT` to an unused preview port.
+See [browser journey evidence](docs/expedition-browser-evidence.md) for measured
+results and their limits.
 
 Space pauses; 1–3 select crew; Q/E select weapons; M/J opens navigation;
 F saves; Escape cancels targeting/closes a panel. Equivalent visible controls
