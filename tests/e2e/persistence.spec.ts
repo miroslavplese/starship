@@ -62,6 +62,13 @@ test('invalid imports preserve the live expedition and both known-good slots', a
     { name: 'out-of-bounds', bytes: envelope(JSON.stringify(outOfBounds)) },
     { name: 'unknown-commodity', bytes: envelope(JSON.stringify(unknownCargo)) },
     { name: 'unknown-upgrade', bytes: envelope(JSON.stringify(unknownModule)) },
+    ...['constructor', 'toString', '__proto__'].map(module => ({
+      name: `inherited-queued-upgrade-${module}`,
+      bytes: envelope(JSON.stringify({
+        ...state, queue: [{ type: 'upgrade', module }],
+        queueMeta: [{ tick: state.tick, sequence: state.sequence }],
+      })),
+    })),
     { name: 'oversized', bytes: 'x'.repeat(1048577) },
   ];
   for (const fixture of cases) {

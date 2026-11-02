@@ -121,34 +121,40 @@ Implementation updates must replace "pending" with exact code/test/evidence
 references, or an explicit unmet status. Future-only content is not a blocker
 when the GDD itself makes it future-only.
 
-| GDD sections | Requirement | Milestone | Initial evidence |
+The implementation references below replace the original planning placeholders.
+Measured outcomes and limits live in `release-status.md` and
+`expedition-browser-evidence.md`; references are not claims of exhaustive
+coverage. Human pacing/fun is explicitly unverified under the user's delivery
+authorization.
+
+| GDD sections | Requirement | Milestone | Implementation evidence |
 |---|---|---|---|
-| 1-3, 28, 30-31 | interconnected ship-command/explore/trade loop; emergent stories | M2-M6 | pending |
-| 4 | complete Expedition, 90-180 minute pacing target | M4/M6 | pending; human timing required |
-| 4 | future Captain Mode architecture, not initial mode | M1 | serializable independent run state planned |
-| 5, 7 | region/system/tactical travel, risk, services | M3/M4 | pending |
-| 6 | progressive contacts, surveys, saleable intelligence | M3 | pending |
-| 8 | ten goods, stock, dynamic prices/events, cargo mass, stale prices | M3/M4 | pending |
-| 9 | factions, legality/customs, all listed mission categories | M4/M5 | pending |
-| 10 | physical derelict crew, salvage, lightweight mining | M3/M5 | pending |
-| 11-12 | data-driven rooms/tiles/doors, atmosphere/fire/breach | M1/M2 | pending |
-| 13 | persistent crew, seven skills, traits, physical tasks | M1/M2/M5 | pending |
-| 14 | reactor and nine core systems; advanced modules | M2/M5 | pending |
-| 15 | shields/evasion and six weapon families | M2/M5 | pending |
-| 16 | directional armor and tactical/strategic EW | M5 | pending |
-| 17 | pause, shared-rule AI, doctrines, retreat/surrender | M2/M5 | pending |
-| 18 | boarding, crew combat, sabotage, capture, defeat | M2/M5 | pending |
-| 19 | stations, shipyard, services, configuration careers | M3/M5 | pending |
-| 20 | seeded authored generation, one player ship, option-based progression | M1/M4/M5 | pending |
-| 21 | 20 Hz determinism, independent render, full combat saving | M1/M2/M6 | pending |
-| 22 | typed simulation independent from Pixi/React, external content | M1 | pending |
-| 23 | original readable art, event-driven audio | M1/M2/M6 | pending |
-| 24 | complete first battle checklist | M2 | pending |
-| 25 | exact sandbox content and 20-30 minute pacing target | M3/M6 | pending; human timing required |
+| 1-3, 28, 30-31 | interconnected ship-command/explore/trade loop; emergent stories | M2-M6 | `careers.test.ts`, `expedition.spec.ts`, `emergency.spec.ts`; human story assessment unverified |
+| 4 | complete Expedition, 90-180 minute pacing target | M4/M6 | `expedition.spec.ts` real-control victory/reload; human timing unverified |
+| 4 | future Captain Mode architecture, not initial mode | M1 | `sim/types.ts`, `game/persistence.ts` independent serializable run |
+| 5, 7 | region/system/tactical travel, risk, services | M3/M4 | `sim/game.ts`, `strategy.test.ts`, full browser route |
+| 6 | progressive contacts, surveys, saleable intelligence | M3 | `content/expedition.ts`, `strategy.test.ts`, browser survey/data sale |
+| 8 | ten goods, stock, dynamic prices/events, cargo mass, stale prices | M3/M4 | `content/region.ts`, `sim/game.ts`, strategy marginal-trade/reservation regressions |
+| 9 | factions, legality/customs, all listed mission categories | M4/M5 | `sim/missions.ts`, `missions.test.ts`, freight/field-claim browser controls |
+| 10 | physical derelict crew, salvage, lightweight mining | M3/M5 | `sim/missions.ts`, `tactical.test.ts`, `missions.test.ts`, explorer career |
+| 11-12 | data-driven rooms/tiles/doors, atmosphere/fire/breach | M1/M2 | `content/ships.ts`, `sim/tactical.ts`, `controls.spec.ts`, `emergency.spec.ts` |
+| 13 | persistent crew, seven skills, traits, physical tasks | M1/M2/M5 | `sim/types.ts`, `sim/tactical.ts`, tactical/mission regressions and emergency controls |
+| 14 | reactor and nine core systems; advanced modules | M2/M5 | Passive cockpit plus powered systems in `content/ships.ts`; fitting/tactical tests |
+| 15 | shields/evasion and six weapon families | M2/M5 | `content/weapons.ts`, `sim/tactical.ts`, tactical regressions and Laser/Ion browser targeting |
+| 16 | directional armor and tactical/strategic EW | M5 | `sim/tactical.ts`, `sim/game.ts`, tactical/strategy regressions |
+| 17 | pause, shared-rule AI, doctrines, retreat/surrender | M2/M5 | `game/controller.ts`, `retreat.test.ts`, `retreat.spec.ts`, persistence pause/queue browser case |
+| 18 | boarding, crew combat, sabotage, capture, defeat | M2/M5 | `sim/tactical.ts`, tactical/retreat regressions, emergency recovery and `endings.spec.ts` |
+| 19 | stations, shipyard, services, configuration careers | M3/M5 | `sim/game.ts`, `careers.test.ts`, prepared fitting/battle browser journey |
+| 20 | seeded authored generation, one player ship, option-based progression | M1/M4/M5 | `content/region.ts`, 100-seed structure tests and 30 legal career victories |
+| 21 | 20 Hz determinism, independent render, full combat saving | M1/M2/M6 | `game/controller.ts`, `persistence.test.ts`, `controls.spec.ts` combat continuation |
+| 22 | typed simulation independent from Pixi/React, external content | M1 | `sim/`, `content/`, `render/Scene.tsx`, `ui/App.tsx`; strict build |
+| 23 | original readable art, event-driven audio | M1/M2/M6 | `public/art/manifest.json`, `visual.spec.ts`, `game/audio.ts`, `audio.test.ts`; human listening unverified |
+| 24 | complete first battle checklist | M2 | `battle.spec.ts`, `controls.spec.ts`, `emergency.spec.ts`; exact outcomes in release ledger |
+| 25 | exact sandbox content and 20-30 minute pacing target | M3/M6 | 100-seed content checks and production commerce/survey; human timing unverified |
 | 26 | staged implementation order | M0-M6 | this plan |
 | 27 | explicit non-goals absent from required scope | all | architecture boundary |
-| 29 | distinguishing systems actually interact | M5/M6 | pending |
-| 32 | engineering documents and contracts | M0 | current document set, awaiting review |
+| 29 | distinguishing systems actually interact | M5/M6 | `careers.test.ts`, physical emergency chain, retreat/stranding/priced recovery |
+| 32 | engineering documents and contracts | M0 | Seven-document baseline; four explicit design ACCEPTs in `review-decisions.md` |
 
 ## Quantitative acceptance cases
 

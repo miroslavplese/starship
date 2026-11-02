@@ -2,6 +2,37 @@
 
 ## Final immutable-artifact verification, 2026-11-02
 
+### Corrected final source: 75eac32
+
+After the final queued-fitting/market-record guards and equivalent crew-sort
+hoist, the parent repeated the entire matrix against source
+`75eac32a3de22296a487ef138cc8341950fd0a1e`, not the earlier bundle:
+
+| Asset | SHA-256 |
+|---|---|
+| `index-BIF077lt.js` | `4F8D3280BF828848B204E64803F585CE2A216A5F03798CEBC29B41A2BD82C03A` |
+| `index-CXeRX3E1.css` | `8C83B6D6627EBD493518DB33C86EE88B86AAE435AAC0525C47E1891CB5201FE3` |
+
+Offline cache: `starship-4e71928d8add280e`. The same command below passed
+**14/14 in 6.6 minutes**, both engines and viewports. Invalid-import coverage
+now has **14 cases**, adding queued fittings named `constructor`, `toString`
+and `__proto__`, with matching queue metadata so rejection exercises the
+content guard. Every rejection retains live/current/previous bytes.
+
+The independent final Vitest run passed **199/199 in 57.88 seconds**, exit 0.
+An earlier concurrent attempt reached 199 passing assertions but exited 1
+with a Vitest worker `onTaskUpdate` RPC timeout; it is retained as a runner
+failure, not counted as a clean pass. The successful repeat did not change
+source, tests or thresholds. Clean strict TypeScript/Vite/offline-cache build
+and final named-hardware timing evidence are recorded in `release-status.md`.
+
+The final corrections do not change art/layout. The six bounded visual
+captures below were taken on ec8f04c; they are not relabeled as screenshots
+from the later JavaScript bundle. Full final-build gameplay/recovery/defeat
+journeys were rerun as stated above.
+
+### Prior final-candidate checkpoint: ec8f04c
+
 The independent parent reviewer integrated source
 `ec8f04c73a2d850cc4c015336903b4bc74921775` and verified the copied clean
 production artifact before serving it statically on port 4184:
@@ -46,6 +77,34 @@ does not claim its incomplete local dependency restore or clean build passed.
 This browser matrix does not replace separate combat, retreat, emergency,
 visual, performance or human assessments. Human pacing/fun remains unverified
 under the user's explicit delivery authorization.
+
+## Bounded final visual assessment
+
+The parent inspected all six production captures from `visual.spec.ts`:
+Chromium 1664x936 and Firefox 1280x720, each showing pristine combat,
+selection/targeting and the physical fire/breach drill at High/full resolution.
+The images are retained in the development session's private artifacts as
+`{chromium,firefox}-{pristine-combat,targeting,fire-breach}.png`.
+The assessment uses the eight separate categories in `validation.md`; no
+aggregate score substitutes for an individual category.
+
+| Category | Score | Observed acceptance |
+|---|---:|---|
+| Composition | 2 | Player and enemy ships remain distinct, with telemetry, threat information and bottom command instruments separated. |
+| Original hull detail | 2 | Authored hull silhouettes and surface detail distinguish the ships from their room overlays; these are not flat placeholder rectangles. |
+| Interiors | 2 | Compartment boundaries, doors and system marks remain readable; the fire/breach inspector identifies the affected compartment. |
+| Crew | 2 | Crew sprites and selectable roster entries are distinguishable; selection and location feedback remain visible. |
+| Effects | 2 | Shield/target feedback and the fire/breach state are visually distinct from normal compartments; warnings also use text. |
+| HUD | 2 | Consistent framed command panels separate resources, system allocation and weapon state; the 720p instruments remain inside the viewport. |
+| Environment | 2 | Original space/hull assets provide depth without obscuring the tactical geometry; provenance is recorded in `public/art/manifest.json`. |
+| Interaction/access | 2 | Labels and dialogs remain usable at both viewports; collapsed drill instructions leave room controls available. Browser assertions also check layout bounds and accessible controls. |
+
+This is an AI visual assessment of these bounded states, not human aesthetic
+approval or proof of every animation frame, display scale or hardware path.
+The separate real-control targeting/emergency tests provide interaction
+evidence; still images alone do not prove hit testing or simulation behavior.
+Final victory debrief captures were also inspected at both viewports without
+clipped headings or terminal action buttons.
 
 ## Observed results, 2026-11-01
 
