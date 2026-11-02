@@ -1,5 +1,52 @@
 # Full Expedition browser acceptance
 
+## Final immutable-artifact verification, 2026-11-02
+
+The independent parent reviewer integrated source
+`ec8f04c73a2d850cc4c015336903b4bc74921775` and verified the copied clean
+production artifact before serving it statically on port 4184:
+
+| Asset | SHA-256 |
+|---|---|
+| `index-CXpUTCCZ.js` | `A132FB30F79962F504FD22862CB8F31B42379B726143865C26BCA99F0CEA3349` |
+| `index-CXeRX3E1.css` | `8C83B6D6627EBD493518DB33C86EE88B86AAE435AAC0525C47E1891CB5201FE3` |
+
+Offline cache identity: `starship-d903bb93dfbf43fb`.
+
+```powershell
+$env:STARSHIP_TEST_PORT='4184'
+node .\node_modules\@playwright\test\cli.js test expedition.spec.ts persistence.spec.ts endings.spec.ts --reporter=line
+```
+
+**14/14 passed in 6.0 minutes**, with one worker: seven cases in Chromium at
+1664x936 and the same seven in Firefox at 1280x720. These results supersede the
+older-artifact rerun obligations below for these particular journeys:
+
+- The fixture-free new-run-to-victory Expedition, archive hand-in and terminal
+  reload described below passed again through actual production controls.
+- Eleven invalid imports now include unknown cargo and fitted-module IDs.
+  Every rejection preserves the live exported run and both known-good slots.
+- Corrupt-primary recovery preserves original bytes, allows a successful
+  subsequent save, exports the diagnostic, and checks both cancellation and
+  confirmed discard. Valid primary/previous slots and live state remain intact.
+- Quota, missing read-back and invalid read-back report save failure without
+  losing the live run or previous known-good slot.
+- Captain pause survives overlapping modal/visibility changes and ten seconds
+  of real waiting. A queued power order survives save/reload unchanged and
+  executes only after explicit resume.
+- Bounded validated fixtures use a genuine imminent missile impact for hull
+  loss and oxygen depletion for crew loss. Actual resume/clock processing
+  produces defeat, immediate terminal autosave and the same debrief after
+  reload. These are deliberately not fixture-free campaign journeys.
+
+The independent final regression run also passed **192/192 tests in 86.81
+seconds** across seven Vitest files. The developer's clean strict TypeScript,
+Vite and offline-cache build supplied the fingerprinted artifact; the parent
+does not claim its incomplete local dependency restore or clean build passed.
+This browser matrix does not replace separate combat, retreat, emergency,
+visual, performance or human assessments. Human pacing/fun remains unverified
+under the user's explicit delivery authorization.
+
 ## Observed results, 2026-11-01
 
 The independent parent reviewer ran

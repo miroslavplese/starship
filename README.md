@@ -38,6 +38,9 @@ previous-slot recovery, quota failures and failed read-back without losing the
 live expedition or claiming a successful save. Corrupt originals are preserved
 in a bounded diagnostic slot so recovery can continue saving. Settings exposes
 diagnostic export and explicitly confirmed discard without deleting good saves.
+The persistence journey also checks pause/visibility overlap and queued orders
+across reload. `tests/e2e/endings.spec.ts` uses bounded lethal-impact and
+oxygen-loss fixtures to verify actual defeat, terminal autosave and reload.
 For parallel worktrees, set `STARSHIP_TEST_PORT` to an unused preview port.
 See [browser journey evidence](docs/expedition-browser-evidence.md) for measured
 results and their limits.
