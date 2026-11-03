@@ -1,6 +1,7 @@
 import type { Command, GameState, Result } from '../sim/types';
 import { command, createGame, step } from '../sim/game';
-import { decode, PREVIOUS_KEY, save, SAVE_KEY } from './persistence';
+import { decode, encode } from './persistence';
+import { createSavedExpedition, findSavedExpedition, loadSavedExpedition, readSaveLibrary, updateSavedExpedition, type SavedExpedition } from './saves';
 import { DIAGNOSTICS_ENABLED } from './features';
 
 export class GameController {
@@ -14,7 +15,10 @@ export class GameController {
   training = false;
   listeners = new Set<() => void>();
   revision = 0;
-  constructor(seed = 12345) { this.state = createGame(seed); }
+  saved: SavedExpedition | null = null;
+  savesRevision = 0;
+  saveIssue = false;
+  constructor(seed = 12345, private storage?: Storage) { this.state = createGame(seed); }
   get paused() { return Boolean(this.state.userPaused || this.forcedPause); }
   set paused(value: boolean) { this.state.userPaused = value; if (!value) this.forcedPause = null; }
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
@@ -63,16 +67,63 @@ export class GameController {
   hidden() { this.forcedPause = 'Paused while away'; this.reason = 'Paused while away'; this.accumulator = 0; this.notify(); }
   persist() {
     if (this.training) { this.message = 'Training is reversible and does not overwrite your expedition save.'; this.notify(); return { ok: false as const, message: this.message }; }
-    const r = save(this.state); this.message = r.ok ? r.quarantined ? 'Expedition saved and verified. An unreadable backup was kept for recovery.' : 'Expedition saved and verified.' : r.message; this.notify(); return r;
-  }
-  load(previous = false) {
-    if (this.training) { this.message = 'Return from the drill before loading another expedition.'; this.notify(); return; }
     try {
-      const text = localStorage.getItem(previous ? PREVIOUS_KEY : SAVE_KEY);
-      if (!text) throw new Error(previous ? 'No previous save is available.' : 'No saved expedition is available.');
-      this.replace(decode(text)); this.message = 'Expedition loaded paused. Resume explicitly.';
-    } catch (e) { this.message = `Load failed: ${e instanceof Error ? e.message : String(e)}`; }
+      this.saved = this.saved ? updateSavedExpedition(this.saved, this.state, this.storage) : createSavedExpedition(this.state, 'new', this.storage);
+      this.saveIssue = false; this.savesRevision++; this.message = 'Expedition saved and verified.'; this.notify(); return { ok: true as const };
+    } catch (error) {
+      this.saveIssue = true; this.savesRevision++;
+      this.message = `Save failed: ${error instanceof Error ? error.message : String(error)}. Download your current progress or save it as a separate expedition.`;
+      this.notify(); return { ok: false as const, message: this.message };
+    }
+  }
+  private keepCurrentProgress() {
+    if (this.training) throw new Error('Return from the drill before switching expeditions.');
+    if (!this.saved) return;
+    const snapshot = encode(this.state);
+    const library = readSaveLibrary(this.storage);
+    if ([...library.saves, ...library.backups].some(entry => entry.id === this.saved!.id && entry.snapshot === snapshot)) return;
+    if (!this.persist().ok) throw new Error('Current progress could not be kept. In Settings, save it as a separate expedition or download it before switching.');
+  }
+  startExpedition(state: GameState, imported = false) {
+    try {
+      encode(state);
+      this.keepCurrentProgress();
+      const saved = createSavedExpedition(state, imported ? 'import' : 'new', this.storage);
+      this.saved = saved; this.saveIssue = false; this.savesRevision++; this.replace(state);
+      this.message = imported ? 'Imported validated run, paused. Saved as a separate expedition.' : 'New expedition saved separately. Ready for command.';
+      this.notify(); return { ok: true as const };
+    } catch (error) {
+      this.message = `${imported ? 'Import' : 'New expedition'} failed: ${error instanceof Error ? error.message : String(error)}. Live run retained.`;
+      this.notify(); return { ok: false as const, message: this.message };
+    }
+  }
+  importExpedition(text: string) {
+    try { return this.startExpedition(decode(text), true); }
+    catch (error) {
+      this.message = `Import failed: ${error instanceof Error ? error.message : String(error)}. Live run retained.`;
+      this.notify(); return { ok: false as const, message: this.message };
+    }
+  }
+  saveSeparateCopy() {
+    if (this.training) { this.message = 'Return from the drill before saving a separate expedition.'; this.notify(); return; }
+    try {
+      this.saved = createSavedExpedition(this.state, 'new', this.storage);
+      this.saveIssue = false; this.savesRevision++; this.message = 'Current progress saved and verified as a separate expedition.';
+    } catch (error) { this.message = `Save failed: ${error instanceof Error ? error.message : String(error)}. Existing expeditions and live progress were kept.`; }
     this.notify();
+  }
+  load(key: string) {
+    try {
+      const selected = findSavedExpedition(key, this.storage);
+      if (!selected) throw new Error('Saved expedition unavailable; use another save or recovery copy.');
+      this.keepCurrentProgress();
+      const saved = selected.recovery ? createSavedExpedition(selected.state, 'recovery', this.storage, selected) : loadSavedExpedition(key, this.storage);
+      this.saved = saved; this.saveIssue = false; this.savesRevision++; this.replace(decode(saved.snapshot));
+      this.message = 'Expedition loaded paused. Resume explicitly.'; this.notify(); return { ok: true as const };
+    } catch (error) {
+      this.message = `Load failed: ${error instanceof Error ? error.message : String(error)}. Live run retained.`;
+      this.notify(); return { ok: false as const, message: this.message };
+    }
   }
   replace(state: GameState) { this.state = state; this.forcedPause = 'Loaded / new expedition'; this.reason = 'Loaded / new expedition'; this.accumulator = 0; this.notify(); }
 }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeDialog, beginExpedition } from './journeys';
+import { closeDialog, beginExpedition, importExpeditionFile } from './journeys';
 import { readFile } from 'node:fs/promises';
 import { command, createGame, step } from '../../src/sim/game';
 import { decode, encode } from '../../src/game/persistence';
@@ -22,7 +22,7 @@ test('physical wreck traversal, full-hold rejection, blocked recall, paid extrac
   await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.locator('input[type="file"]').setInputFiles({ name: 'blocked-wreck.json', mimeType: 'application/json', buffer: Buffer.from(encode(state)) });
+  await importExpeditionFile(page, 'blocked-wreck.json', encode(state));
   await expect(page.locator('.dialog-footer')).toContainText('Imported validated run');
   await closeDialog(page);
   await page.keyboard.press('2');

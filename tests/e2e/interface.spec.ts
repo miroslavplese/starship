@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeDialog, dismissScreen, beginExpedition, continueExpedition, setGraphicsQuality } from './journeys';
+import { closeDialog, dismissScreen, beginExpedition, continueExpedition, setGraphicsQuality, savedLibraryBytes } from './journeys';
 
 test('cinematic menu, pre-run settings and credits never write a save', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
@@ -11,17 +11,20 @@ test('cinematic menu, pre-run settings and credits never write a save', async ({
   await expect(page.getByRole('dialog')).toContainText('Miroslav Plese');
   await dismissScreen(page);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Save expedition/ })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /Save expedition/ })).toHaveCount(0);
   await page.getByRole('checkbox', { name: 'Reduced motion', exact: true }).check();
   await dismissScreen(page);
   await page.getByRole('button', { name: 'Load Game', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled();
+  await expect(page.locator('.empty-saves')).toContainText('No saved expeditions');
+  await expect(page.locator('.save-recovery')).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'load', exact: true })).not.toContainText('Interaction pause active');
+  await expect(page.getByRole('button', { name: /^(Save expedition|Continue|Restore)/ })).toHaveCount(0);
   await expect(page.getByLabel('Import expedition')).toBeVisible();
   await dismissScreen(page);
   await page.getByRole('button', { name: 'New Game', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Mission selection', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /Planetary Survey/ }).click();
-  expect(await page.evaluate(() => localStorage.getItem('starship.save.v1'))).toBeNull();
+  expect(await savedLibraryBytes(page)).toEqual({});
   await page.getByRole('button', { name: 'Begin Expedition', exact: true }).click();
   await page.getByRole('button', { name: 'Skip introduction' }).click();
   await expect(page.locator('.enemy-readout')).toContainText('Planetary survey');
@@ -29,14 +32,14 @@ test('cinematic menu, pre-run settings and credits never write a save', async ({
   await expect(page.locator('.navigation-bar')).toHaveCount(0);
   await page.keyboard.press('f');
   await expect(page.locator('.command-feedback')).toContainText('saved and verified');
-  const saved = await page.evaluate(() => localStorage.getItem('starship.save.v1'));
+  const saved = await savedLibraryBytes(page);
   await page.reload();
   await page.getByRole('button', { name: 'New Game', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Mission selection', exact: true })).toBeVisible();
   await dismissScreen(page);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await dismissScreen(page);
-  expect(await page.evaluate(() => localStorage.getItem('starship.save.v1'))).toBe(saved);
+  expect(await savedLibraryBytes(page)).toEqual(saved);
   await continueExpedition(page);
   await expect(page.locator('.enemy-readout')).toContainText('Planetary survey');
   expect(errors).toEqual([]);

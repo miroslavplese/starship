@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { recorderKey } from '../content/expedition';
 import { GOODS, UPGRADES } from '../content/region';
-import type { GameState, Result } from '../sim/types';
+import type { GameState } from '../sim/types';
 
 const finite = z.number().finite();
 const nonnegative = finite.min(0).max(1e9);
@@ -135,79 +135,16 @@ export function validate(data: unknown): GameState {
 }
 export function encode(s: GameState): string {
   const payload = JSON.stringify(validate(s)), encoded = JSON.stringify({ schema: 1, checksum: checksum(payload), payload });
-  if (encoded.length > 1048576) throw new Error('Save exceeds 1 MiB. Export diagnostics and retain the previous save.');
+  if (encoded.length > 1048576) throw new Error('Save exceeds 1 MiB. Keep a backup of your current progress.');
   return encoded;
 }
 export function decode(text: string): GameState {
   if (text.length > 1048576) throw new Error('Import exceeds 1 MiB.');
   const envelope: unknown = JSON.parse(text);
   const e = z.object({ schema: z.literal(1), checksum: z.string(), payload: z.string() }).parse(envelope);
-  if (checksum(e.payload) !== e.checksum) throw new Error('Save checksum mismatch. Try the previous known-good slot.');
+  if (checksum(e.payload) !== e.checksum) throw new Error('Save checksum mismatch. Try a recovery copy or another save file.');
   return validate(JSON.parse(e.payload));
 }
 export const SAVE_KEY = 'starship.save.v1';
 export const PREVIOUS_KEY = 'starship.previous.v1';
 export const CORRUPT_KEY = 'starship.corrupt.v1';
-export type SaveResult = Result & { quarantined?: boolean };
-
-function decodeError(text: string): string | null {
-  try { decode(text); return null; }
-  catch (e) { return e instanceof Error ? e.message : String(e); }
-}
-
-export function saveAvailability(storage: Storage = localStorage) {
-  const primary = storage.getItem(SAVE_KEY);
-  const previous = storage.getItem(PREVIOUS_KEY);
-  const primaryError = primary === null ? null : decodeError(primary);
-  const previousError = previous === null ? null : decodeError(previous);
-  return {
-    canContinue: primary !== null && primaryError === null,
-    damaged: primaryError !== null || previousError !== null || storage.getItem(CORRUPT_KEY) !== null,
-    error: primaryError ?? previousError,
-  };
-}
-
-export function recoveryDiagnostics(storage: Storage = localStorage): string {
-  const primary = storage.getItem(SAVE_KEY), previous = storage.getItem(PREVIOUS_KEY), quarantined = storage.getItem(CORRUPT_KEY);
-  return JSON.stringify({
-    schema: 1, primary, previous, quarantined,
-    primaryError: primary === null ? null : decodeError(primary),
-    quarantinedError: quarantined === null ? null : decodeError(quarantined),
-  }, null, 2);
-}
-
-export function discardCorruptSaves(storage: Storage = localStorage): Result {
-  try {
-    const primary = storage.getItem(SAVE_KEY), previous = storage.getItem(PREVIOUS_KEY);
-    const corruptPrimary = primary !== null && decodeError(primary) !== null;
-    const corruptPrevious = previous !== null && decodeError(previous) !== null;
-    if (corruptPrimary) storage.removeItem(SAVE_KEY);
-    if (corruptPrevious) storage.removeItem(PREVIOUS_KEY);
-    storage.removeItem(CORRUPT_KEY);
-    if ((corruptPrimary && storage.getItem(SAVE_KEY) !== null) || (corruptPrevious && storage.getItem(PREVIOUS_KEY) !== null) || storage.getItem(CORRUPT_KEY) !== null) throw new Error('Unreadable saves could not be removed.');
-    return { ok: true };
-  } catch (e) { return { ok: false, message: `Removing unreadable saves failed: ${e instanceof Error ? e.message : String(e)}. Download a recovery backup before retrying.` }; }
-}
-
-export function save(s: GameState, storage: Storage = localStorage): SaveResult {
-  try {
-    const bytes = encode(s), prior = storage.getItem(SAVE_KEY);
-    let quarantined = false;
-    if (prior !== null) {
-      if (decodeError(prior) === null) storage.setItem(PREVIOUS_KEY, prior);
-      else {
-        if (prior.length > 1048576) throw new Error('The damaged save exceeds the 1 MiB recovery-backup limit. Download a recovery backup and remove unreadable saves before saving.');
-        const retained = storage.getItem(CORRUPT_KEY);
-        if (retained !== null && retained !== prior) throw new Error('A different damaged save is already kept. Download a recovery backup and remove unreadable saves before saving.');
-        storage.setItem(CORRUPT_KEY, prior);
-        if (storage.getItem(CORRUPT_KEY) !== prior) throw new Error('Recovery backup could not be verified; unreadable saved game kept.');
-        quarantined = true;
-      }
-    }
-    storage.setItem(SAVE_KEY, bytes);
-    const readback = storage.getItem(SAVE_KEY);
-    if (readback !== bytes) throw new Error('Save read-back failed; previous slot retained.');
-    decode(readback);
-    return quarantined ? { ok: true, quarantined: true } : { ok: true };
-  } catch (e) { return { ok: false, message: `Save failed: ${e instanceof Error ? e.message : String(e)}. Download your save file or restore the previous save.` }; }
-}

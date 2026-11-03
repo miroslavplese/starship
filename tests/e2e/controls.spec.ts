@@ -1,10 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { closeDialog, beginExpedition, continueExpedition, returnFromDrill } from './journeys';
+import { closeDialog, beginExpedition, continueExpedition, returnFromDrill, savedLibraryBytes } from './journeys';
 
 async function newRun(page: Page) {
   await page.goto('/');
   await page.getByRole('button', { name: 'Load Game', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeDisabled();
+  await expect(page.locator('.empty-saves')).toContainText('No saved expeditions');
   await closeDialog(page);
   await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
@@ -93,7 +93,7 @@ test('real door lock/unlock, reversible emergency drill and terminal persistence
   await closeDialog(page);
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: /Save expedition/ }).click();
-  const original = await page.evaluate(() => localStorage.getItem('starship.save.v1'));
+  const original = await savedLibraryBytes(page);
   await closeDialog(page);
   await page.getByRole('button', { name: 'FIELD MANUAL', exact: true }).click();
   await page.getByRole('button', { name: 'Damage-control practice drill' }).click();
@@ -102,7 +102,7 @@ test('real door lock/unlock, reversible emergency drill and terminal persistence
   await expect(page.locator('.screen-fade')).toHaveCount(0);
   await page.keyboard.press('f');
   await expect(page.locator('.command-feedback')).toContainText('does not overwrite');
-  expect(await page.evaluate(() => localStorage.getItem('starship.save.v1'))).toBe(original);
+  expect(await savedLibraryBytes(page)).toEqual(original);
   await returnFromDrill(page);
   await expect(page.locator('.player-readout')).toContainText('30 / 30');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();

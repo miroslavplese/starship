@@ -7,8 +7,9 @@ resolve all references below to rescue/capture rules, thresholds and pacing.
 ## 1. Start, learn, continue
 
 Boot -> validate content -> illustrated main menu (New Game / Load Game /
-Settings / About). Settings and recovery work before a run starts; Save and
-Export are disabled until a real run is started/imported. About credits
+Settings / About). Settings and recovery work before a run starts; live Save and
+Export appear only after a real run is started/imported. Stored saves can be
+downloaded from their own cards without starting a game. About credits
 Miroslav Plese and shows automatically generated version/build and UTC build
 time, without a gameplay pause notice. New Game opens mission selection, seed
 and difficulty. Ordinary Settings offers player presentation choices, not
@@ -22,12 +23,28 @@ uint32 seed; Generate uses browser randomness outside the simulation to choose
 a new displayed seed. All options leave the full campaign available. Contract
 state already persists and validates, so no additional save fields are needed.
 
-Browsing New Game or Settings never writes a save. Begin confirms replacement
-of a live run or a valid saved run; existing bytes remain until the new run is
-explicitly saved or autosaved during play. Load Game exposes Continue only for
-a valid save, previous-save restoration and validated import. When damaged bytes
-exist, Load Game and Settings offer recovery-backup download and confirmed
-removal of unreadable saves, preserving working saves and the live expedition.
+Browsing New Game, Settings or Load Game never writes a save. Begin first keeps
+current live progress, then creates a verified separate expedition, including
+when the seed matches another game. A failed write leaves the live game in place.
+Load Game lists readable expeditions with one Load action per card, real mission/
+location/progress and honest saved times. Imports create separate saved games
+before replacing the live state. Load always starts paused. Save belongs in
+Settings or the F shortcut; there is no disabled Save or ambiguous Continue/
+Restore pair on Load Game.
+
+Backups and damaged-save recovery is a separate, explanatory section, shown
+only when backups or damaged data exist. Empty Load has no gameplay pause
+implementation notice; its single ordinary importer also accepts recovery
+backup files. Selecting
+an earlier checkpoint keeps unsaved live progress and loads the originally
+selected snapshot into a new expedition. Legacy current/previous/quarantined
+bytes stay untouched while verified, idempotent copies migrate on a load/write.
+Legacy times were not recorded and are not invented. Damaged copies remain
+downloadable in a full recovery backup; there is no destructive delete action.
+Recovery imports add readable copies, report partial failures/unreadable data,
+and retain verified copies on a failed write. Keep the original backup file.
+Older snapshots already overwritten by the old single rolling slot cannot be
+recreated; other browsers/devices/origins may contain independent data.
 
 Screen changes fade out for 160ms, swap while covered, then fade in for 160ms.
 Input and tactical ticking are blocked across both phases. Focus moves into the
@@ -171,6 +188,11 @@ Hidden tab -> automatic pause -> clear wall-time accumulator -> return ->
 "Paused while away" -> explicit resume. Opening a modal preserves user pause.
 Invalid command -> explain missing prerequisite -> no resource/RNG mutation.
 Storage full -> visible error -> offer download; never show false "Saved".
+Stale save changed by another window -> preserve its newer bytes -> offer saving
+live progress as a separate expedition. Switching waits until current progress
+can be kept. Autosave and terminal saves use the active expedition identity,
+not the seed or a global current slot. Practice drills retain that identity and
+never persist temporary drill state.
 
 ## 10. Observable acceptance journeys
 

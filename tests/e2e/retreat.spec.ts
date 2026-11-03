@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeDialog, beginExpedition } from './journeys';
+import { closeDialog, beginExpedition, importExpeditionFile } from './journeys';
 import { command, createGame, step } from '../../src/sim/game';
 import { encode } from '../../src/game/persistence';
 
@@ -18,7 +18,7 @@ test('withdrawn-contact stranding pauses, persists and requires explicit paid re
   await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.locator('input[type="file"]').setInputFiles({ name: 'retreat-decision.json', mimeType: 'application/json', buffer: Buffer.from(encode(state)) });
+  await importExpeditionFile(page, 'retreat-decision.json', encode(state));
   await expect(page.locator('.dialog-footer')).toContainText('Imported validated run');
   await closeDialog(page);
   await page.getByRole('button', { name: /RESUME/ }).click();
@@ -31,9 +31,10 @@ test('withdrawn-contact stranding pauses, persists and requires explicit paid re
   await closeDialog(page);
   await page.keyboard.press('f');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Load saved game', exact: true }).click();
-  await expect(page.locator('.dialog-footer')).toContainText('Expedition loaded paused');
-  await closeDialog(page);
+  await page.getByRole('button', { name: 'Saved expeditions', exact: true }).click();
+  await page.getByRole('button', { name: 'Load', exact: true }).first().click();
+  await expect(page.locator('.command-feedback')).toContainText('Expedition loaded paused');
+  await expect(page.locator('main')).not.toHaveAttribute('inert', '');
   await page.screenshot({ path: `test-results/${test.info().project.name}-stranded.png` });
   await page.getByRole('button', { name: 'Review crew / emergency tether', exact: true }).click();
   for (const button of await page.getByRole('button', { name: 'Board contact', exact: true }).all()) await expect(button).toBeDisabled();

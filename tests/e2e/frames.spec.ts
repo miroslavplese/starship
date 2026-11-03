@@ -41,17 +41,16 @@ test('clipped frame edges stay connected across panels, selection, confirmations
   await page.screenshot({ path: testInfo.outputPath('briefing-corners.png') });
 
   await closeDialog(page);
-  await page.evaluate(() => localStorage.setItem('starship.save.v1', '{broken'));
+  await beginExpedition(page);
+  await page.getByRole('button', { name: 'Skip introduction', exact: true }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const settings = page.getByRole('dialog', { name: 'settings', exact: true });
   expect(await settings.evaluate(element => getComputedStyle(element).clipPath)).toBe('none');
-  await page.getByRole('button', { name: 'Remove unreadable saves', exact: true }).click();
-  const confirmation = page.getByRole('alertdialog', { name: 'Remove unreadable saves', exact: true });
+  await page.getByRole('button', { name: 'Abandon expedition', exact: true }).click();
+  const confirmation = page.getByRole('alertdialog', { name: 'Confirm command', exact: true });
   await expectCornerEdges(page, confirmation);
   await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
   await closeDialog(page);
-  await beginExpedition(page);
-  await page.getByRole('button', { name: 'Skip introduction', exact: true }).click();
   for (const selector of ['.player-readout', '.enemy-readout', '.systems-panel', '.weapons-panel', '.drones-panel', '.pause-button', '.crew-card']) {
     await expectCornerEdges(page, page.locator(selector).first());
   }

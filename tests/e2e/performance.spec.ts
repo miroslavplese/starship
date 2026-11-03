@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { command, createGame, step } from '../../src/sim/game';
 import { encode } from '../../src/game/persistence';
-import { closeDialog, beginExpedition, enableDiagnostics } from './journeys';
+import { closeDialog, beginExpedition, enableDiagnostics, importExpeditionFile } from './journeys';
 
 test('actual production battle rendering cadence', async ({ page, browserName }) => {
   test.skip(process.env.PERFORMANCE !== '1' || browserName !== 'chromium', 'Run explicitly with PERFORMANCE=1 in Chromium.');
@@ -19,7 +19,7 @@ test('actual production battle rendering cadence', async ({ page, browserName })
       return { id: `benchmark-${i}`, source: source.id, target: target.id, room: target.rooms[i % target.rooms.length].id, family: 'ion' as const, remaining: 1500 + i * 75, total: 5000 };
     });
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
-    await page.locator('input[type="file"]').setInputFiles({ name: 'baseline.json', mimeType: 'application/json', buffer: Buffer.from(encode(state)) });
+    await importExpeditionFile(page, 'baseline.json', encode(state));
     await expect(page.locator('.dialog-footer')).toContainText('Imported validated run');
     await closeDialog(page);
   }

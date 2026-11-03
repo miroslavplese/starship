@@ -2,13 +2,32 @@ import { expect, type Page } from '@playwright/test';
 
 export async function beginExpedition(page: Page, seed?: string) {
   await page.getByRole('button', { name: 'New Game', exact: true }).click();
+  await expect(page.locator('main')).not.toHaveAttribute('inert', '');
   if (seed) await page.getByLabel('EXPEDITION SEED', { exact: true }).fill(seed);
   await page.getByRole('button', { name: 'Begin Expedition', exact: true }).click();
 }
 
 export async function continueExpedition(page: Page) {
   await page.getByRole('button', { name: 'Load Game', exact: true }).click();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.locator('.saved-games > .saved-list').getByRole('button', { name: 'Load', exact: true }).first().click();
+  await expect(page.locator('.screen-fade')).toHaveCount(0);
+  await expect(page.locator('main')).not.toHaveAttribute('inert', '');
+}
+
+export async function importExpeditionFile(page: Page, name: string, bytes: string) {
+  await expect(page.locator('main')).not.toHaveAttribute('inert', '');
+  await page.getByLabel('Import expedition', { exact: true }).setInputFiles({ name, mimeType: 'application/json', buffer: Buffer.from(bytes) });
+}
+
+export async function savedLibraryBytes(page: Page) {
+  return page.evaluate(() => Object.fromEntries(Object.keys(localStorage).filter(key => key.startsWith('starship.')).sort().map(key => [key, localStorage.getItem(key)])));
+}
+
+export async function savedSnapshots(page: Page) {
+  return page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('starship.expedition.v1:') && !key.endsWith('.previous')).map(key => {
+    const record = JSON.parse(localStorage.getItem(key)!);
+    return { key, raw: localStorage.getItem(key)!, snapshot: record.snapshot as string, name: record.name as string, savedAt: record.savedAt as string | null };
+  }));
 }
 
 export async function closeDialog(page: Page) {

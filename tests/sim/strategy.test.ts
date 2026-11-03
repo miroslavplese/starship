@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { command, createGame, step } from '../../src/sim/game';
 import { cargoUsed, generateRegion, GOODS, price } from '../../src/content/region';
-import { decode, encode, save, SAVE_KEY, PREVIOUS_KEY } from '../../src/game/persistence';
+import { decode, encode } from '../../src/game/persistence';
+import { createSavedExpedition, readSaveLibrary, updateSavedExpedition } from '../../src/game/saves';
 import { GameController } from '../../src/game/controller';
 import { createShip } from '../../src/content/ships';
 import type { Command, GameState } from '../../src/sim/types';
@@ -177,13 +178,13 @@ describe('strategic rules', () => {
       const api = new GameController(1);
       api.state.archive = true;
       expect(api.dispatch({ type: 'objective', choice: 'handin' }).ok).toBe(true);
-      expect(decode(data.get(SAVE_KEY)! ).phase).toBe('victory');
+      expect(readSaveLibrary(storage).saves[0].state.phase).toBe('victory');
       api.replace(createGame(1)); api.state.ships[0].hull = 0;
       api.togglePause(); api.advance(50);
-      expect(decode(data.get(SAVE_KEY)!).phase).toBe('defeat');
+      expect(readSaveLibrary(storage).saves[0].state.phase).toBe('defeat');
       api.replace(createGame(1)); api.training = true;
       api.dispatch({ type: 'abandon', confirm: true });
-      expect(decode(data.get(SAVE_KEY)!).phase).toBe('defeat');
+      expect(readSaveLibrary(storage).saves[0].state.phase).toBe('defeat');
     } finally { vi.unstubAllGlobals(); }
   });
   it('partial wreck rooms and dead away crew survive re-entry and persistence', () => {
@@ -245,11 +246,12 @@ describe('strategic rules', () => {
   it('keeps previous good bytes when storage fails', () => {
     const data = new Map<string, string>();
     const storage: Storage = { get length() { return data.size; }, key: i => [...data.keys()][i] ?? null, getItem: k => data.get(k) ?? null, setItem: (k, v) => { data.set(k, v); }, removeItem: k => { data.delete(k); }, clear: () => data.clear() };
-    const s = createGame(1); expect(save(s, storage).ok).toBe(true); const old = storage.getItem(SAVE_KEY);
-    run(s, 100); expect(save(s, storage).ok).toBe(true); expect(storage.getItem(PREVIOUS_KEY)).toBe(old);
+    const s = createGame(1); let entry = createSavedExpedition(s, 'new', storage); const old = entry.raw;
+    run(s, 100); entry = updateSavedExpedition(entry, s, storage); expect(storage.getItem(`${entry.key}.previous`)).toBe(old);
+    run(s, 100);
     storage.setItem = () => { throw new Error('QuotaExceeded'); };
-    expect(save(s, storage)).toEqual(expect.objectContaining({ ok: false }));
-    expect(storage.getItem(PREVIOUS_KEY)).toBe(old);
+    expect(() => updateSavedExpedition(entry, s, storage)).toThrow('QuotaExceeded');
+    expect(storage.getItem(`${entry.key}.previous`)).toBe(old);
   });
   it('persists deterministic continuous state across 10k ticks and save boundary', () => {
     const a = createGame(42), b = createGame(42);

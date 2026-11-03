@@ -53,12 +53,30 @@ export/import JSON to move an expedition from localhost to the hosted site.
 Hosting does not make the desktop layout phone-responsive.
 
 The cinematic main menu offers New Game, Load Game (including JSON import and
-previous-slot recovery), Settings and About. New Game offers the full
+backup recovery), Settings and About. New Game offers the full
 Cartographer expedition, a planetary survey, flight-recorder recovery, convoy
 escort, or a seed-generated choice among those commissions. Missions use actual
 contract objectives and deadlines, leave the campaign available, and survive
 save/load without changing the save format. Browsing setup never overwrites a
-save; beginning another run requires confirmation when a live/saved run exists.
+save. Beginning another run saves it under a new, seed-independent identity
+after keeping current live progress; existing expeditions are not replaced.
+
+Load Game lists each expedition with a single **Load** action, mission,
+location, seed, progress and known saved/import time. Save and live export belong
+in Settings, not Load Game. Each expedition has its own current and previous
+checkpoint; manual saves, autosaves and endings stay with the selected expedition.
+Imports create independent expeditions, even for an identical seed/save file.
+Legacy current, previous and quarantined bytes are never removed or overwritten:
+read-only browsing exposes readable snapshots; the first load/write makes
+verified, idempotent migration copies. Unknown legacy dates remain unknown.
+**Backups and damaged-save recovery** separates earlier checkpoints from ordinary
+loading, and appears only when backups or damaged data exist. The normal file
+import also accepts recovery backups in an empty library. Loading a checkpoint creates a new expedition instead of rewinding the
+latest save. Recovery backup downloads include all raw saved/damaged bytes;
+their importer adds readable copies, reports unreadable data and can resume a
+partial import without duplicating verified copies. Keep the original file.
+Previously overwritten history cannot be reconstructed; other browsers,
+devices and origins have separate storage and may hold other saves.
 
 Navigation, dock/operations, journal and field manual are icon buttons immediately
 left of Settings. Navigation shows actual known interstellar routes and a local
@@ -91,11 +109,12 @@ controls, including freight, all three coordinates, survey/fuel preparation,
 save/continue, guardian passage, archive extraction and a persisted victory.
 It uses the player's safe-speed control, not hidden state or fixture saves.
 `tests/e2e/persistence.spec.ts` uses UI-created saves to verify rejected imports,
-previous-slot recovery, quota failures and failed read-back without losing the
-live expedition or claiming a successful save. Corrupt originals are preserved
-in a bounded diagnostic slot so recovery can continue saving. Settings exposes
-plain-language recovery backup download and explicitly confirmed unreadable-save
-removal only when damaged bytes exist, without deleting working saves.
+legacy current/previous migration, distinct same-seed expeditions, selected-save
+autosave routing, backup recovery, quota failures and failed read-back without
+losing the live expedition or claiming a successful save. Damaged originals are
+retained, with player-facing backup export/import and no destructive removal UI.
+Storage conflicts offer download or saving live progress as a separate
+expedition; they do not silently replace another window's newer version.
 The persistence journey also checks pause/visibility overlap and queued orders
 across reload. `tests/e2e/endings.spec.ts` uses bounded lethal-impact and
 oxygen-loss fixtures to verify actual defeat, terminal autosave and reload.

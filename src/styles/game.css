@@ -128,3 +128,9 @@ button.frame:hover:not(.selected):not(.paused) { --frame-edge: #a6e9f4; }
   .title-content { margin-left: 7vw; }
   .title-art { object-position: 65% center; }
 }
+.saved-list{display:grid;gap:12px;margin:18px 0}
+.saved-expedition{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:18px;border:1px solid #41616d;background:#10232be6}
+.saved-expedition h2{margin:0 0 8px}.saved-expedition p{margin:6px 0}.saved-expedition small{color:#abc3cc}
+.saved-actions{display:flex;flex-direction:column;gap:8px;flex-shrink:0}.saved-actions button{min-height:44px;margin:0}
+.save-recovery{margin-top:24px;border-top:1px solid #41616d;padding-top:18px}.save-recovery summary{cursor:pointer;padding:12px 0;color:#e8c486}
+@media(max-width:650px){.saved-expedition{align-items:stretch;flex-direction:column}.saved-actions{flex-direction:row;flex-wrap:wrap}}

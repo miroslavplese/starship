@@ -105,9 +105,10 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1440, height: 108
     fixture.nextId = Math.max(fixture.nextId, 41);
     await page.goto('/');
     await page.getByRole('button', { name: 'Load Game', exact: true }).click();
+    await expect(page.locator('main')).not.toHaveAttribute('inert', '');
     await page.getByLabel('Import expedition').setInputFiles({ name: 'log-fixture.json', mimeType: 'application/json', buffer: Buffer.from(encode(fixture)) });
-    await expect(page.locator('.dialog-footer')).toContainText('Imported validated run, paused.');
-    await closeDialog(page);
+    await expect(page.getByRole('dialog', { name: 'load', exact: true })).toHaveCount(0);
+    await expect(page.locator('.command-feedback')).toContainText('Imported validated run, paused.');
     await expect(page.locator('.tactical-scene')).toHaveAttribute('data-renderer-ready', 'true');
     const buttons = page.locator('.command-icons button');
     await expect(buttons).toHaveCount(5);

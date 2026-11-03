@@ -251,24 +251,45 @@ oxygen consequences must be reflected in the scene and available actions.
 
 ## 7. Persistence and audio adapters
 
-Save adapter stores envelope + previous slot; write, read back and validate
-before reporting success. On write failure retain the previous slot and expose
-export. Import uses a maximum size and validates every entity/reference before
-swapping state. Terminal saves load to their result screen, never a live dead
-ship. New-run confirmation protects an existing save.
+The codec in `game/persistence.ts` retains the schema-1 checked GameState envelope.
+`game/saves.ts` stores records under `starship.expedition.v1:<UUID>` with a
+per-expedition `.previous` checkpoint. Identity is random, never derived from
+seed; records contain a friendly name, source, nullable saved/created/imported
+UTC times, and the original validated snapshot. The library enumerates individual
+keys, so one damaged record does not hide all other games behind a broken index.
+Ordinary cards and recovery checkpoints are separate read-only projections.
+
+The controller owns the active record and expected stored bytes. New games and
+imports first keep unsaved live progress, then verify a new record before
+replacing state. Manual/autosave/ending writes route to this record. A stale
+record cannot silently overwrite a different newer version; a separate-copy
+action keeps both. The old current record is written and verified as a checkpoint
+before updating current; damaged checkpoint bytes are retained separately before
+replacement. Quota/read-back failures never claim success and expose live export.
+LocalStorage is not a cross-tab transaction; the expected-byte checks detect
+stale writes but are not an atomic multi-window compare-and-swap.
+
+Import validates the maximum 1 MiB snapshot and every entity/reference before
+any mutation. Imports always get a new identity, even for the same file.
+Terminal saves load to their result screen, never a live dead ship.
 
 Cargo and fitted-module IDs must resolve to authored content. The sole dynamic
 cargo ID is a unique flight recorder: its referenced location must be an actual
 derelict and its quantity must be one. Mission recovery and persistence share
 the same recorder-ID constructor; a matching prefix alone is not validation.
 
-After previous-slot recovery, saving quarantines the corrupt primary before
-replacing it and leaves the known-good previous slot intact. One diagnostic slot
-retains at most 1 MiB and never overwrites different corrupt bytes. Diagnostics
-export includes raw primary, previous and quarantined bytes. Explicitly
-confirmed discard removes only an invalid primary and the diagnostic slot,
-never a valid primary or the previous slot; storage/read-back failures are
-reported rather than treated as success.
+Legacy `starship.save.v1`, `starship.previous.v1` and `starship.corrupt.v1` are
+read but never changed/deleted. Readable snapshots migrate lazily, preserving
+exact source bytes in provenance and verifying each copied record. Exact source
+key/bytes make retries idempotent, including partially failed migrations.
+Original snapshots remain recoverable after later progress. Unknown saved
+times remain null; an import time is not presented as an original save time.
+Recovery loads fork the selected snapshot before any live-progress save can
+rotate that checkpoint. Full recovery downloads preserve all original/record/
+damaged bytes. Both the earlier recovery JSON and new library backup are
+importable (16 MiB file limit); readable snapshots become separate records,
+unreadable copies are counted, partial writes retain verified copies, and
+retries recognize exact provenance. No player delete/discard interface is used.
 
 Audio adapter consumes events, never causes simulation effects. It starts only
 after a user gesture and supports master/effects volume and mute. Synthesized
