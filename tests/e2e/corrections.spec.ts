@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { encode } from '../../src/game/persistence';
 import { createGame } from '../../src/sim/game';
+import { displayRoomBounds } from '../../src/render/layout';
 import { beginExpedition, closeDialog, dismissScreen } from './journeys';
 
 async function sceneryRows(page: Page, image: Buffer) {
@@ -29,8 +30,9 @@ async function clickWeaponsRoom(page: Page) {
   const width = Math.max(...ship.rooms.map(room => room.x + room.w)) - minX;
   const height = Math.max(...ship.rooms.map(room => room.y + room.h)) - minY;
   const unit = Math.min(540 / width, 285 / height);
-  const x = 580 + ((room.x - minX + room.w * .25) * unit - width * unit / 2) * .9;
-  const y = 292 + ((room.y - minY + room.h * .3) * unit - height * unit / 2) * .9;
+  const bounds = displayRoomBounds(room, { x: -(minX + width / 2) * unit, y: -(minY + height / 2) * unit, unit }, true);
+  const x = 580 + (bounds.x + bounds.w * .25) * .9;
+  const y = 292 + (bounds.y + bounds.h * .3) * .9;
   const box = (await page.locator('.tactical-scene canvas').boundingBox())!;
   const scale = Math.min(box.width / 1600, box.height / 600);
   await page.mouse.click(box.x + (box.width - 1600 * scale) / 2 + x * scale, box.y + (box.height - 600 * scale) / 2 + y * scale);

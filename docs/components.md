@@ -152,6 +152,15 @@ coordinates account for canvas bounding rectangle, scale and device pixel ratio.
 
 ## 5. Rendering composition
 
+`displayRoomBounds` reflects the complete Wayfarer interior across its centered
+display axis to match the unchanged hull's left exhaust/right bow. Room hitboxes,
+doors, crew movement, fire, projectile endpoints and popup anchors all consume
+these bounds. System/room IDs and saved simulation geometry remain authoritative
+for game rules; reflection preserves room area, adjacency and movement timing.
+New runs and legacy/imported saves therefore share the corrected display without
+save normalization or changes to deterministic continuation. Other hull layouts
+retain their existing orientation.
+
 | Layer / component | Responsibility |
 |---|---|
 | Background | seeded stars, nebula, planet and distant asteroids; reduced-motion option |

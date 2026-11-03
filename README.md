@@ -88,6 +88,14 @@ reserving header or scene space. All five top action buttons have 48px hit targe
 Accepted crew orders close the popup and return focus to the selected crew;
 rejected orders leave it open with visible feedback.
 
+Wayfarer's compartment display follows its original hull: engines and reactor
+are aft beside the left exhaust, with cockpit and sensors toward the right bow,
+weapons/life support amidships and medbay forward. The renderer reflects complete
+room bounds, including crew, doors, hazards, targeting and order anchors; labels
+and hull art remain unflipped. Simulation geometry, stable room IDs, adjacency,
+room volumes and travel timing stay unchanged, so existing saved expeditions
+need no migration. Other ships retain their own display orientation.
+
 Graphics quality is selectable in Settings. Auto detects the adapter;
 developer tools are absent from ordinary builds. Only an explicit
 `VITE_STARSHIP_DIAGNOSTICS=1` build offers the diagnostics section in Settings,

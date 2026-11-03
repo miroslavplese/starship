@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Application, Container, Graphics, NineSliceSprite, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import type { Crew, GameState, Room, Ship, SystemKind } from '../sim/types';
 import { DIAGNOSTICS_ENABLED } from '../game/features';
+import { displayRoomBounds } from './layout';
 
 export interface SceneProps {
   state: GameState;
@@ -275,8 +276,7 @@ class ShipView {
   }
 
   bounds(room: Room) {
-    return { x: this.grid.x + room.x * this.grid.unit, y: this.grid.y + room.y * this.grid.unit,
-      w: room.w * this.grid.unit, h: room.h * this.grid.unit };
+    return displayRoomBounds(room, this.grid, this.player);
   }
 
   center(roomId?: string): Point {
@@ -293,7 +293,7 @@ class ShipView {
     const a = this.grid.width / 2;
     const b = this.grid.height / 2;
     if (hull) {
-      // Nine-slicing stretches only the transparent aperture; room coordinates stay authoritative.
+      // Nine-slicing stretches only the transparent aperture; displayed room bounds stay authoritative.
       const scale = 0.35;
       const top = this.player ? 270 : 285;
       const bottom = this.player ? 322 : 286;
