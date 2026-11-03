@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { command, createGame, step } from '../../src/sim/game';
 import { encode } from '../../src/game/persistence';
+import { closeDialog, beginExpedition, enableDiagnostics } from './journeys';
 
 test('actual production battle rendering cadence', async ({ page, browserName }) => {
   test.skip(process.env.PERFORMANCE !== '1' || browserName !== 'chromium', 'Run explicitly with PERFORMANCE=1 in Chromium.');
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/');
-  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
   if (process.env.PERFORMANCE_FIXTURE === 'baseline') {
     const state = createGame(12345);
@@ -20,9 +21,9 @@ test('actual production battle rendering cadence', async ({ page, browserName })
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.locator('input[type="file"]').setInputFiles({ name: 'baseline.json', mimeType: 'application/json', buffer: Buffer.from(encode(state)) });
     await expect(page.locator('.dialog-footer')).toContainText('Imported validated run');
-    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await closeDialog(page);
   }
-  await page.locator('.tactical-scene select').selectOption(process.env.GRAPHICS_QUALITY ?? 'performance');
+  await enableDiagnostics(page, process.env.GRAPHICS_QUALITY ?? 'performance');
   if (process.env.PERFORMANCE_FIXTURE !== 'baseline') {
     await page.getByRole('button', { name: /NAVIGATION/ }).click();
     await page.locator('.contact-card').last().getByRole('button', { name: 'SET COURSE' }).click();
@@ -51,7 +52,7 @@ test('actual production battle rendering cadence', async ({ page, browserName })
       userAgent: navigator.userAgent,
       webglRenderer: gl && debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : 'unavailable',
       webglVendor: gl && debug ? gl.getParameter(debug.UNMASKED_VENDOR_WEBGL) : 'unavailable',
-      renderer: document.querySelector('.tactical-scene select')?.parentElement?.parentElement?.textContent,
+      renderer: document.querySelector('.graphics-diagnostics')?.textContent,
     };
   });
   const workload = process.env.PERFORMANCE_FIXTURE === 'baseline' ? 'Validated synthetic 2-ship/6-crew/32-projectile fixture; native guns absent, no in-window impacts' : 'Actual generated battle, variable projectile count';

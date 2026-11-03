@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { beginExpedition, continueExpedition } from './journeys';
 
 test('25 production restart/load/battle cycles and fifteen-minute browser endurance', async ({ page, context, browserName }) => {
   test.skip(process.env.SOAK !== '1' || browserName !== 'chromium', 'Run explicitly with SOAK=1 in Chromium.');
@@ -10,7 +11,7 @@ test('25 production restart/load/battle cycles and fifteen-minute browser endura
   const started = Date.now();
   for (let cycle = 0; cycle < 25; cycle++) {
     await page.goto('/');
-    await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+    await beginExpedition(page);
     if (await page.getByRole('alertdialog').count()) await page.getByRole('button', { name: 'Confirm', exact: true }).click();
     await page.getByRole('button', { name: 'Skip introduction' }).click();
     await page.getByRole('button', { name: /NAVIGATION/ }).click();
@@ -29,7 +30,7 @@ test('25 production restart/load/battle cycles and fifteen-minute browser endura
     await page.getByRole('button', { name: /Save expedition/ }).click();
     await expect(page.locator('.dialog-footer')).toContainText('saved and verified');
     await page.reload();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await continueExpedition(page);
     await page.getByRole('button', { name: /RESUME/ }).click();
     await page.waitForTimeout(36000);
     expect(await page.locator('canvas').count()).toBe(1);

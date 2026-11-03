@@ -1,16 +1,17 @@
 import { expect, test } from '@playwright/test';
+import { closeDialog, beginExpedition, continueExpedition, enableDiagnostics } from './journeys';
 
 test('first battle: damage control, repower, surrender or victory, reward and departure', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
-  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
   await page.getByRole('button', { name: /DOCK \/ STATION/ }).click();
   await page.getByRole('button', { name: 'SHIPYARD', exact: true }).click();
   await page.locator('article').filter({ has: page.getByRole('heading', { name: 'Pulse laser', exact: true }) }).getByRole('button', { name: /INSTALL/ }).click();
   await page.getByRole('button', { name: 'CONTRACTS', exact: true }).click();
   await page.locator('article').filter({ has: page.getByRole('heading', { name: 'Raider interdiction', exact: true }) }).getByRole('button', { name: 'Accept', exact: true }).click();
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await page.getByRole('button', { name: 'Increase weapons power' }).click();
   await page.getByRole('button', { name: /NAVIGATION/ }).click();
   await page.locator('.contact-card').last().getByRole('button', { name: 'SET COURSE' }).click();
@@ -19,6 +20,8 @@ test('first battle: damage control, repower, surrender or victory, reward and de
     await page.keyboard.press(key);
     await page.getByRole('button', { name: 'SHIP', exact: true }).click();
     await page.locator('.operation-buttons button').filter({ hasText: new RegExp(`^Marked raider at s0-pirate: ${room}`) }).click();
+    await expect(page.getByRole('dialog', { name: 'systems', exact: true })).toHaveCount(0);
+    await expect(page.locator('.screen-fade')).toHaveCount(0);
   }
   await page.locator('.weapon-tile').nth(2).getByRole('button', { name: /Pulse Laser/ }).click();
   await page.getByRole('button', { name: 'SHIP', exact: true }).click();
@@ -51,7 +54,7 @@ test('first battle: damage control, repower, surrender or victory, reward and de
     const bounty = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Raider interdiction', exact: true }) });
     await bounty.getByRole('button', { name: 'Claim completion' }).click();
     completed = await bounty.count() === 0;
-    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await closeDialog(page);
     if (completed) break;
     await page.getByRole('button', { name: /RESUME/ }).click();
   }
@@ -65,8 +68,9 @@ test('first battle: damage control, repower, surrender or victory, reward and de
   await page.getByRole('button', { name: /Save expedition/ }).click();
   await expect(page.locator('.dialog-footer')).toContainText('saved and verified');
   await page.reload();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await continueExpedition(page);
   await expect(page.locator('[title="Credits and scrap"] b')).toHaveText(credits!);
+  await enableDiagnostics(page);
   await expect(page.getByTestId('tactical-rendered-fps')).not.toHaveAttribute('data-render-state', 'measuring');
   await page.screenshot({ path: `test-results/${test.info().project.name}-first-battle-complete.png` });
   expect(errors).toEqual([]);

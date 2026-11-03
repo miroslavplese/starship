@@ -1,10 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import { closeDialog, beginExpedition, continueExpedition } from './journeys';
 
 const travelTimeout = 60_000;
-
-async function closeDialog(page: Page) {
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
-}
 
 async function resume(page: Page) {
   const button = page.getByRole('button', { name: /RESUME/ });
@@ -68,8 +65,7 @@ test('completes and preserves an Expedition through production controls', async 
 
   await test.step('Start a genuine new run and finance preparation with freight', async () => {
     await page.goto('/');
-    await page.getByLabel('EXPEDITION SEED', { exact: true }).fill('12345');
-    await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+    await beginExpedition(page, '12345');
     await page.getByRole('button', { name: 'Skip introduction', exact: true }).click();
     await safeSpeed(page);
     await page.getByRole('button', { name: 'DOCK / STATION', exact: true }).click();
@@ -129,7 +125,7 @@ test('completes and preserves an Expedition through production controls', async 
     await page.getByRole('button', { name: /Save expedition/ }).click();
     await expect(page.getByRole('dialog')).toContainText('saved and verified');
     await page.reload();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await continueExpedition(page);
     await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /JOURNAL.*3\/3/ })).toBeVisible();
     await safeSpeed(page);
@@ -162,7 +158,7 @@ test('completes and preserves an Expedition through production controls', async 
       .toContainText('Archives 3/3');
     await page.keyboard.press('f');
     await page.reload();
-    await page.getByRole('button', { name: 'Continue', exact: true }).click();
+    await continueExpedition(page);
     await expect(page.getByRole('dialog', { name: 'Expedition debrief', exact: true }))
       .toContainText('THE ARCHIVE IS HOME');
     await page.screenshot({ path: testInfo.outputPath('expedition-victory.png'), fullPage: true });

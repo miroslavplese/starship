@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { beginExpedition, enableDiagnostics, returnFromDrill } from './journeys';
 
 test('finished combat, targeting and physical-hazard visual states at full resolution', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
-  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
-  await page.locator('.tactical-scene select').selectOption('high');
+  await enableDiagnostics(page, 'high');
   await page.getByRole('button', { name: /NAVIGATION/ }).click();
   await page.locator('.contact-card').last().getByRole('button', { name: 'SET COURSE' }).click();
   await expect(page.locator('.enemy-readout')).toContainText('CONTACT HULL', { timeout: 60000 });
@@ -39,6 +40,6 @@ test('finished combat, targeting and physical-hazard visual states at full resol
   }));
   expect(layout.document).toBeLessThanOrEqual(layout.viewport);
   expect(layout.instrumentsBottom).toBeLessThanOrEqual(layout.height + 1);
-  await page.getByRole('button', { name: 'Return to expedition unchanged' }).click();
+  await returnFromDrill(page);
   expect(errors).toEqual([]);
 });

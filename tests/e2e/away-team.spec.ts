@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { closeDialog, beginExpedition } from './journeys';
 import { readFile } from 'node:fs/promises';
 import { command, createGame, step } from '../../src/sim/game';
 import { decode, encode } from '../../src/game/persistence';
@@ -18,12 +19,12 @@ test('physical wreck traversal, full-hold rejection, blocked recall, paid extrac
   for (const door of wreck.doors) { door.open = false; door.locked = door.a === wreck.rooms[0].id || door.b === wreck.rooms[0].id; }
   state.ships[0].cargo.food = state.ships[0].capacity;
   await page.goto('/');
-  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.locator('input[type="file"]').setInputFiles({ name: 'blocked-wreck.json', mimeType: 'application/json', buffer: Buffer.from(encode(state)) });
   await expect(page.locator('.dialog-footer')).toContainText('Imported validated run');
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await page.keyboard.press('2');
   await page.getByRole('button', { name: 'SHIP', exact: true }).click();
   await page.locator('.operation-buttons button').filter({ hasText: `${wreck.name}: Engines` }).click();
@@ -37,7 +38,7 @@ test('physical wreck traversal, full-hold rejection, blocked recall, paid extrac
   await page.getByRole('button', { name: 'Emergency tether', exact: true }).click();
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(page.locator('[title="Credits and scrap"]')).toHaveText('CR 40');
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await page.getByRole('button', { name: /RESUME/ }).click();
   await expect(page.locator('.crew-roster')).not.toContainText('AWAY', { timeout: 60000 });
   await expect(page.getByRole('progressbar', { name: 'Ivo health' })).toHaveAttribute('value', '90');
@@ -46,7 +47,7 @@ test('physical wreck traversal, full-hold rejection, blocked recall, paid extrac
   await page.getByRole('button', { name: 'Export JSON', exact: true }).click();
   const download = await exported;
   expect(decode(await readFile((await download.path())!, 'utf8')).ships[0].cargo).toEqual({});
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
 
   await page.getByRole('button', { name: 'CREW', exact: true }).click();
   const crew = page.locator('.service-grid article').filter({ has: page.getByRole('heading', { name: /^Ivo/ }) });
@@ -66,9 +67,9 @@ test('physical wreck traversal, full-hold rejection, blocked recall, paid extrac
   await page.getByRole('button', { name: 'Recall away team', exact: true }).click();
   await expect(page.locator('.dialog-footer')).toContainText('returning through the docking route');
   await expect(crew).toContainText('AWAY');
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await expect(page.locator('.crew-roster')).not.toContainText('AWAY', { timeout: 60000 });
   await page.keyboard.press('f');
-  await expect(page.locator('.navigation-bar [role="status"]')).toContainText('saved and verified');
+  await expect(page.locator('.command-feedback')).toContainText('saved and verified');
   expect(errors).toEqual([]);
 });

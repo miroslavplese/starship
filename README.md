@@ -52,9 +52,26 @@ on the same origin is not cleared. Saves remain local to each browser/origin:
 export/import JSON to move an expedition from localhost to the hosted site.
 Hosting does not make the desktop layout phone-responsive.
 
-Graphics quality is selectable in the tactical view. Auto detects the adapter;
-the visible rendered-FPS diagnostic counts actual scene submissions and settles
-to zero when paused. Headful Iris Xe meets the measured performance target;
+The cinematic main menu offers New Game, Load Game (including JSON import and
+previous-slot recovery), Settings and About. New Game offers the full
+Cartographer expedition, a planetary survey, flight-recorder recovery, convoy
+escort, or a seed-generated choice among those commissions. Missions use actual
+contract objectives and deadlines, leave the campaign available, and survive
+save/load without changing the save format. Browsing setup never overwrites a
+save; beginning another run requires confirmation when a live/saved run exists.
+
+Navigation, dock/operations, journal and field manual are icon buttons immediately
+left of Settings. Navigation shows actual known interstellar routes and a local
+orbital schematic; selecting a node highlights its course card, where existing
+travel costs and gates apply. Select crew then a room for an anchored order popup,
+or use the keyboard-accessible room list in Ship Systems. The transparent,
+scrollable ship log sits below the expedition/contact tile.
+
+Graphics quality is selectable in Settings. Auto detects the adapter;
+the rendered-FPS diagnostic is hidden by default and enabled only in Settings.
+It counts actual scene submissions and settles to zero when paused. Screen
+changes fade out and in, block input during transition and respect reduced motion.
+Headful Iris Xe meets the previously measured performance target;
 headless software rendering currently does not.
 
 ```powershell
@@ -79,6 +96,11 @@ oxygen-loss fixtures to verify actual defeat, terminal autosave and reload.
 `tests/e2e/away-team.spec.ts` verifies full-hold salvage rejection, blocked
 recall, explicit paid extraction, reboarding, physical door authorization and
 traversal, log recovery and normal recall through the production controls.
+`tests/e2e/interface.spec.ts` covers pre-run menus/credits/settings, save-safe
+setup, selected-mission completion and reload, both visual map levels,
+settings-driven rendering, viewport-clamped room orders, modal focus and fades.
+`tests/sim/scenarios.test.ts` checks distinct generated objectives and full-state
+save continuation without changing the existing campaign.
 For parallel worktrees, set `STARSHIP_TEST_PORT` to an unused preview port.
 See [browser journey evidence](docs/expedition-browser-evidence.md) for measured
 results and their limits.

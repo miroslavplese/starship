@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
 import type { GameState } from '../../src/sim/types';
+import { closeDialog, beginExpedition, continueExpedition } from './journeys';
 
 const currentKey = 'starship.save.v1';
 const previousKey = 'starship.previous.v1';
@@ -8,7 +9,7 @@ const feedback = (page: Page) => page.getByRole('dialog', { name: 'settings', ex
 
 async function startAndSave(page: Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction', exact: true }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: /Save expedition/ }).click();
@@ -112,7 +113,7 @@ test('a corrupt primary remains available for diagnostics while the previous run
   await expect(confirmation).not.toBeVisible();
   expect(await page.evaluate(keys => keys.map(key => localStorage.getItem(key)), slots)).toEqual([bytes, bytes, null]);
   expect(await exportRun(page)).toBe(bytes);
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await closeDialog(page);
   await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
 });
 
@@ -144,7 +145,7 @@ test('quota and failed read-back never claim success or lose the live run and pr
     };
   }, currentKey);
   await startAndSave(page);
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await closeDialog(page);
   await page.getByRole('button', { name: 'Increase medbay power', exact: true }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const live = await exportRun(page);
@@ -163,7 +164,7 @@ test('quota and failed read-back never claim success or lose the live run and pr
 
 test('captain pause survives overlapping modal and visibility changes without executing queued orders', async ({ page }) => {
   await startAndSave(page);
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await closeDialog(page);
   await page.getByRole('button', { name: /RESUME/ }).click();
   await page.getByRole('button', { name: /PAUSE/ }).click();
   await page.getByRole('button', { name: 'Increase medbay power', exact: true }).click();
@@ -183,18 +184,18 @@ test('captain pause survives overlapping modal and visibility changes without ex
     Reflect.deleteProperty(document, 'hidden');
     document.dispatchEvent(new Event('visibilitychange'));
   });
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await closeDialog(page);
   await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   expect(await exportRun(page)).toBe(before);
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await closeDialog(page);
   await page.keyboard.press('f');
   await page.reload();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await continueExpedition(page);
   await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   expect(await exportRun(page)).toBe(before);
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
+  await closeDialog(page);
   await page.getByRole('button', { name: /RESUME/ }).click();
   await expect.poll(async () => {
     await page.keyboard.press('f');

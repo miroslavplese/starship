@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+import { closeDialog, beginExpedition, returnFromDrill } from './journeys';
+
+test.use({ actionTimeout: 30000 });
 
 async function selectRoom(page: Page, name: string) {
   await page.getByRole('button', { name: 'SHIP', exact: true }).click();
@@ -8,7 +11,7 @@ async function selectRoom(page: Page, name: string) {
 test('real physical emergency suppression, breach repair, healing and vent warning', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
-  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
   await page.getByRole('button', { name: 'FIELD MANUAL', exact: true }).click();
   await page.getByRole('button', { name: 'Damage-control practice drill' }).click();
@@ -34,13 +37,15 @@ test('real physical emergency suppression, breach repair, healing and vent warni
   await vent.getByRole('button', { name: 'Open', exact: true }).click();
   await expect(page.getByRole('alertdialog')).toContainText('depressurize and suffocate');
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await page.getByRole('button', { name: /RESUME/ }).click();
   await page.waitForTimeout(1000);
   await page.getByRole('button', { name: 'SHIP', exact: true }).click();
   await vent.getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('button', { name: 'Close dialog' }).click();
-  await page.getByRole('button', { name: 'Return to expedition unchanged' }).click();
+  await closeDialog(page);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.room-inspector')).toHaveCount(0);
+  await returnFromDrill(page);
   await expect(page.locator('.player-readout')).toContainText('30 / 30');
   expect(errors).toEqual([]);
 });

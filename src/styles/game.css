@@ -45,3 +45,78 @@ button.frame:hover:not(.selected):not(.paused) { --frame-edge: #a6e9f4; }
 .tutorial { --frame-edge: #b29c65; }
 .pause-button.paused { --frame-edge: #e7cd84; }
 .drill-banner, .stranded-banner { --frame-edge: #e1c276; }
+
+.deck-content { display: contents; }
+.command-icons { display: flex; gap: 5px; align-items: center; margin-left: auto; }
+.command-icons button { margin: 0; width: 36px; height: 40px; padding: 3px; font-size: 23px; }
+.telemetry { gap: 12px; }
+.player-readout { width: 34%; }
+.enemy-readout { width: 27%; }
+.command-feedback { align-self: center; padding: 5px 20px; }
+.event-feed { top: 8px; bottom: auto; right: 18px; width: min(27vw, 430px); max-height: 145px; overflow: auto; pointer-events: auto; padding: 8px; background: #07111b26; opacity: .8; scrollbar-width: thin; z-index: 3; }
+.event-feed:hover, .event-feed:focus-within { opacity: 1; background: #07111b99; }
+.event-feed > div { background: transparent; padding: 4px 7px; }
+.room-inspector { position: fixed; bottom: auto; width: min(300px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow: auto; z-index: 12; }
+.drill-banner { z-index: 10; }
+.title-screen { position: fixed; inset: 0; z-index: 20; overflow: auto; background: #050c18; }
+.title-art { position: absolute; width: 100%; height: 100%; object-fit: cover; object-position: center; }
+.title-screen::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, #030b18ed, #030b1888 40%, transparent 76%); }
+.title-content { position: relative; z-index: 1; width: min(540px, 85vw); margin: clamp(35px, 9vh, 110px) 7vw; text-shadow: 0 2px 12px #020813; }
+.title-content h1 { font-size: clamp(48px, 6vw, 86px); font-weight: 300; letter-spacing: .12em; margin: 18px 0 0; }
+.title-content h1 span { font-weight: 750; }
+.title-subtitle { font-size: 12px; letter-spacing: .4em; color: #b6d2df; }
+.title-content > p:not(.title-subtitle) { margin: 32px 0; font-size: 18px; line-height: 1.8; color: #bdd2df; }
+.title-content nav { display: grid; gap: 10px; max-width: 320px; margin: 28px 0; }
+.title-content nav button { margin: 0; padding: 14px 20px; display: flex; justify-content: space-between; text-align: left; background: #102333c9; font-size: 17px; }
+.title-content nav button.primary { background: #9cdee8; }
+.title-content nav button span { opacity: .55; font-size: 11px; }
+.scenario-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 24px 0; }
+.scenario-grid button { margin: 0; text-align: left; padding: 15px; }
+.scenario-grid b, .scenario-grid span { display: block; }
+.scenario-grid span { margin-top: 10px; font-size: 12px; line-height: 1.6; color: #b4cbd7; }
+.start-screen > h1 { font-size: 38px; letter-spacing: .05em; }
+.start-options { flex-wrap: wrap; align-items: end; gap: 16px; }
+.start-options input, .start-options select { width: 190px; }
+.start-options > button { margin: 0; height: 38px; font-size: 11px; }
+.about-content { line-height: 1.8; max-width: 700px; }
+.about-content h2 { font-size: 32px; margin: 16px 0 24px; }
+.navigation-visual { background: radial-gradient(ellipse at center, #18304880, #040b17); border: 1px solid #33586d; padding: 14px; margin-bottom: 20px; }
+.navigation-visual svg { display: block; width: 100%; min-height: 220px; }
+.navigation-visual text { font-size: 13px; font-family: inherit; fill: #c4dbe8; pointer-events: none; paint-order: stroke; stroke: #040b17; stroke-width: 3px; stroke-linejoin: round; }
+.navigation-visual .map-here { font-size: 10px; fill: #9df0ce; }
+.route { stroke: #39556f; stroke-width: 1.5; }
+.route.available { stroke: #70c4d4; stroke-width: 2; }
+.orbit { fill: none; stroke: #42637a; stroke-width: .8; }
+.map-point { cursor: pointer; outline: none; }
+.map-body { fill: #8faaca; stroke: #e0f3ff; stroke-width: 1; }
+.planet .map-body { fill: #528eae; }
+.station .map-body { fill: #a4d5ba; }
+.pirate .map-body { fill: #d27577; }
+.star .map-body { fill: url(#map-sun); }
+.position-ring { fill: none; stroke: #9df0ce; stroke-width: 2; stroke-dasharray: 4 3; }
+.map-point:hover .map-body, .map-point:focus-visible .map-body, .map-point.inspected .map-body { stroke: #f0cd78; stroke-width: 4; }
+.screen-fade { position: fixed; inset: 0; z-index: 100; background: #020711; pointer-events: auto; }
+.fade-out { animation: screen-out 160ms ease-in forwards; }
+.fade-in { animation: screen-in 160ms ease-out forwards; }
+@keyframes screen-out { from { opacity: 0; } to { opacity: 1; } }
+@keyframes screen-in { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .screen-fade { animation: none; } }
+@media (max-width: 1350px) {
+  .telemetry { gap: 8px; }
+  .ftl-readout { width: 140px; flex-shrink: 0; }
+  .command-icons { gap: 3px; }
+  .command-icons button { width: 30px; height: 36px; font-size: 20px; }
+  .settings-button { margin-left: 0; padding: 7px; }
+  .enemy-readout { width: 26%; }
+}
+@media (max-height: 760px) {
+  .title-content { margin-top: 30px; }
+  .title-content > p:not(.title-subtitle) { margin: 18px 0; font-size: 16px; }
+  .title-content nav { margin: 18px 0; }
+  .title-content nav button { padding: 12px 18px; }
+}
+@media (max-width: 700px) {
+  .scenario-grid { grid-template-columns: 1fr; }
+  .title-content { margin-left: 7vw; }
+  .title-art { object-position: 65% center; }
+}

@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { closeDialog, beginExpedition } from './journeys';
 
 async function expectCornerEdges(page: Page, frame: Locator) {
   const border = await frame.evaluate(element => getComputedStyle(element).borderTopColor);
@@ -35,18 +36,20 @@ async function expectCornerEdges(page: Page, frame: Locator) {
 
 test('clipped frame edges stay connected across panels, selection, confirmations and scrolling', async ({ page }, testInfo) => {
   await page.goto('/');
-  await expectCornerEdges(page, page.getByRole('dialog', { name: 'Expedition briefing', exact: true }));
+  await page.getByRole('button', { name: 'New Game', exact: true }).click();
+  await expectCornerEdges(page, page.getByRole('dialog', { name: 'Mission selection', exact: true }));
   await page.screenshot({ path: testInfo.outputPath('briefing-corners.png') });
 
-  await page.getByRole('button', { name: 'Import / recovery', exact: true }).click();
+  await closeDialog(page);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const settings = page.getByRole('dialog', { name: 'settings', exact: true });
   expect(await settings.evaluate(element => getComputedStyle(element).clipPath)).toBe('none');
   await page.getByRole('button', { name: 'Discard corrupt saved bytes', exact: true }).click();
   const confirmation = page.getByRole('alertdialog', { name: 'Discard corrupt saved bytes', exact: true });
   await expectCornerEdges(page, confirmation);
   await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await page.getByRole('button', { name: 'Close dialog', exact: true }).click();
-  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await closeDialog(page);
+  await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction', exact: true }).click();
   for (const selector of ['.player-readout', '.enemy-readout', '.systems-panel', '.weapons-panel', '.drones-panel', '.pause-button', '.crew-card']) {
     await expectCornerEdges(page, page.locator(selector).first());
@@ -86,6 +89,7 @@ test('clipped frame edges stay connected across panels, selection, confirmations
 test('briefing corners remain connected at the reported screenshot size', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 859, height: 655 });
   await page.goto('/');
-  await expectCornerEdges(page, page.getByRole('dialog', { name: 'Expedition briefing', exact: true }));
+  await page.getByRole('button', { name: 'New Game', exact: true }).click();
+  await expectCornerEdges(page, page.getByRole('dialog', { name: 'Mission selection', exact: true }));
   await page.screenshot({ path: testInfo.outputPath('briefing-859x655.png') });
 });

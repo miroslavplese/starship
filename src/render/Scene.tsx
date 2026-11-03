@@ -10,12 +10,16 @@ export interface SceneProps {
   onCrew: (crewId: string) => void;
   reducedMotion: boolean;
   enemyIntel?: boolean;
+  quality: Quality;
+  diagnostics: boolean;
+  selectedRoom: { ship: string; room: string } | null;
+  onRoomAnchor: (point: Point | null) => void;
 }
 
 type Point = { x: number; y: number };
 type RoomView = { room: Room; root: Container; floor: Graphics; detail: Graphics; glyph: Graphics; caption?: Text; overlay: Graphics; visualKey: string; floorColor: number };
 type CrewView = { root: Container; body: Graphics; status: Graphics; statusKey: string; fromX: number; fromY: number; toX: number; toY: number; movedAt: number };
-type Quality = 'auto' | 'high' | 'balanced' | 'performance';
+export type Quality = 'auto' | 'high' | 'balanced' | 'performance';
 const W = 1600;
 const H = 600;
 const C = {
@@ -630,9 +634,8 @@ export default function Scene(props: SceneProps) {
   const latest = useRef(props);
   latest.current = props;
   const [failure, setFailure] = useState(false);
-  const [quality, setQuality] = useState<Quality>('auto');
-  const qualityRef = useRef(quality);
-  qualityRef.current = quality;
+  const qualityRef = useRef(props.quality);
+  qualityRef.current = props.quality;
   const [qualityDescription, setQualityDescription] = useState('detecting renderer');
   const [renderedFPS, setRenderedFPS] = useState<number | null>(null);
 
@@ -648,6 +651,7 @@ export default function Scene(props: SceneProps) {
     const world = new Container();
     let frameId = 0;
     let frameDirty = true;
+    let anchorKey = '';
     let hullTexture: Texture | undefined;
     let enemyHullTexture: Texture | undefined;
     const dispose = () => {
@@ -743,6 +747,13 @@ export default function Scene(props: SceneProps) {
             setQualityDescription(`${software ? 'software' : 'GPU'} · ${Math.round(resolution * 100)}% resolution`);
           }
           const p = latest.current;
+          const anchoredView = p.selectedRoom && views.get(p.selectedRoom.ship);
+          const anchoredRoom = anchoredView && p.selectedRoom && anchoredView.rooms.get(p.selectedRoom.room);
+          const anchor = anchoredView && anchoredRoom ? anchoredRoom.root.toGlobal({ x: anchoredView.bounds(anchoredRoom.room).w / 2, y: 0 }) : null;
+          const rect = element.getBoundingClientRect();
+          const point = anchor ? { x: rect.left + anchor.x, y: rect.top + anchor.y } : null;
+          const nextAnchorKey = point ? `${point.x.toFixed(1)},${point.y.toFixed(1)}` : '';
+          if (nextAnchorKey !== anchorKey) { anchorKey = nextAnchorKey; p.onRoomAnchor(point); }
           const tickChanged = p.state.tick !== lastTick;
           if (tickChanged) {
             lastTick = p.state.tick;
@@ -846,21 +857,12 @@ export default function Scene(props: SceneProps) {
     {failure && <p role="status" style={{ color: '#b8ccd9', padding: 24 }}>
       Tactical graphics are unavailable. Room and crew orders remain available in the control panels.
     </p>}
-    {!failure && <label style={{
-      position: 'absolute', right: 12, top: 6, display: 'flex', alignItems: 'center', gap: 6,
+    {!failure && props.diagnostics && <div className="graphics-diagnostics" style={{
+      position: 'absolute', right: 12, bottom: 6, display: 'flex', alignItems: 'center', gap: 6,
       color: '#b8ccd9', background: '#08111df2', border: '1px solid #3c5264', padding: '3px 6px',
       fontSize: 11, lineHeight: '16px', whiteSpace: 'nowrap',
     }}>
-      Graphics
-      <select aria-label="Tactical graphics quality" value={quality} onChange={event => setQuality(event.target.value as Quality)}
-        onKeyDown={event => event.stopPropagation()}
-        style={{ color: '#dceaf3', background: '#132231', border: '1px solid #526b7e', fontSize: 11,
-          height: 22, padding: '2px 4px', lineHeight: '16px' }}>
-        <option value="auto">Auto</option>
-        <option value="high">High</option>
-        <option value="balanced">Balanced</option>
-        <option value="performance">Performance</option>
-      </select>
+      Graphics · {props.quality}
       <span>{qualityDescription}</span>
       <output data-testid="tactical-rendered-fps" aria-label="Actual tactical rendered frames per second"
         aria-live="off" data-rendered-fps={renderedFPS?.toFixed(1)}
@@ -869,6 +871,6 @@ export default function Scene(props: SceneProps) {
         Rendered {renderedFPS === null ? '—' : renderedFPS.toFixed(1)} FPS
         {renderedFPS === null ? ' · measuring' : renderedFPS === 0 ? ' · idle (paused / unchanged)' : ''}
       </output>
-    </label>}
+    </div>}
   </div>;
 }

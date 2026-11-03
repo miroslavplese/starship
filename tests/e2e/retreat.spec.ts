@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { closeDialog, beginExpedition } from './journeys';
 import { command, createGame, step } from '../../src/sim/game';
 import { encode } from '../../src/game/persistence';
 
@@ -14,12 +15,12 @@ test('withdrawn-contact stranding pauses, persists and requires explicit paid re
   }
   enemy.hull = 8; enemy.ftl = 600; state.tick = 159;
   await page.goto('/');
-  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.locator('input[type="file"]').setInputFiles({ name: 'retreat-decision.json', mimeType: 'application/json', buffer: Buffer.from(encode(state)) });
   await expect(page.locator('.dialog-footer')).toContainText('Imported validated run');
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await page.getByRole('button', { name: /RESUME/ }).click();
   await expect(page.locator('.stranded-banner')).toContainText('AWAY TEAM STRANDED');
   await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
@@ -27,12 +28,12 @@ test('withdrawn-contact stranding pauses, persists and requires explicit paid re
   await page.getByRole('button', { name: 'SHIP', exact: true }).click();
   await expect(page.locator('.dialog select option')).toHaveCount(1);
   await expect(page.locator('.operation-buttons button').filter({ hasText: /^Raider Kestrel:/ })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await page.keyboard.press('f');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('button', { name: 'Load current slot', exact: true }).click();
   await expect(page.locator('.dialog-footer')).toContainText('Expedition loaded paused');
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await page.screenshot({ path: `test-results/${test.info().project.name}-stranded.png` });
   await page.getByRole('button', { name: 'Review crew / emergency tether', exact: true }).click();
   for (const button of await page.getByRole('button', { name: 'Board contact', exact: true }).all()) await expect(button).toBeDisabled();
@@ -43,7 +44,7 @@ test('withdrawn-contact stranding pauses, persists and requires explicit paid re
   await expect(page.getByRole('alertdialog')).toContainText('20 credits/debt, 10 HP');
   await page.getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(page.locator('[title="Credits and scrap"]')).toHaveText('CR 40');
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await page.getByRole('button', { name: /RESUME/ }).click();
   await expect(page.locator('.stranded-banner')).toHaveCount(0, { timeout: 60000 });
   await expect(page.locator('.crew-roster')).not.toContainText('AWAY');

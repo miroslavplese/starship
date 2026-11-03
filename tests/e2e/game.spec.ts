@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { closeDialog, beginExpedition, continueExpedition, enableDiagnostics } from './journeys';
 test('production controls: onboarding, queued orders, commerce, survey and persistence', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
-  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
   await page.getByRole('button', { name: 'Increase medbay power' }).click();
-  await expect(page.locator('.navigation-bar [role="status"]')).toContainText('queued');
+  await expect(page.locator('.command-feedback')).toContainText('queued');
   await page.getByRole('button', { name: /RESUME/ }).click();
   await page.waitForTimeout(200);
   await page.getByRole('button', { name: /PAUSE/ }).click();
@@ -18,7 +19,7 @@ test('production controls: onboarding, queued orders, commerce, survey and persi
   const freight = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Supply run', exact: true }) });
   await freight.getByRole('button', { name: 'Accept', exact: true }).click();
   await expect(freight).toContainText('active');
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await page.getByRole('button', { name: /NAVIGATION/ }).click();
   const outpost = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Helios Research Outpost', exact: true }) });
   await outpost.getByRole('button', { name: 'SET COURSE' }).click();
@@ -27,7 +28,7 @@ test('production controls: onboarding, queued orders, commerce, survey and persi
   await page.getByRole('button', { name: 'CONTRACTS', exact: true }).click();
   await page.locator('article').filter({ has: page.getByRole('heading', { name: 'Supply run', exact: true }) }).getByRole('button', { name: 'Claim completion' }).click();
   await expect(page.getByRole('dialog')).toContainText('complete');
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
   await page.getByRole('button', { name: /NAVIGATION/ }).click();
   const planet = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Helios I', exact: true }) });
   await planet.getByRole('button', { name: 'SET COURSE' }).click();
@@ -39,11 +40,12 @@ test('production controls: onboarding, queued orders, commerce, survey and persi
   await page.getByRole('button', { name: /Save expedition/ }).click();
   await expect(page.getByRole('dialog')).toContainText('saved and verified');
   await page.reload();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await continueExpedition(page);
   await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
   await page.getByRole('button', { name: /JOURNAL/ }).click();
   await expect(page.getByRole('dialog')).toContainText('1 discoveries');
-  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await closeDialog(page);
+  await enableDiagnostics(page);
   await expect(page.getByTestId('tactical-rendered-fps')).not.toHaveAttribute('data-render-state', 'measuring');
   await page.screenshot({ path: `test-results/${test.info().project.name}-sandbox.png`, fullPage: true });
   expect(errors).toEqual([]);

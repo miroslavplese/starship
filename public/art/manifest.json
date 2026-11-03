@@ -3,6 +3,13 @@
   "license": "Original project artwork; no third-party game art or textures.",
   "assets": [
     {
+      "id": "exploration-hero",
+      "source": "public/art/exploration-hero.png",
+      "origin": "Original AI-generated cinematic exploration illustration supplied by the parent session for this project.",
+      "sha256": "3600d8233d1d39d8c245dfc8f3a8432b12248a375f05cb8befb86d85c2e83d1a",
+      "usage": "Main-menu background: Wayfarer, blue planet and ancient orbital ruin; dark left space supports accessible menu text."
+    },
+    {
       "id": "corsair-hull",
       "source": "public/art/corsair-hull.png",
       "origin": "Original AI-generated transparent hostile hull artwork supplied by the parent session for this project.",

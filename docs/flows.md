@@ -6,11 +6,30 @@ resolve all references below to rescue/capture rules, thresholds and pacing.
 
 ## 1. Start, learn, continue
 
-Boot -> validate content -> main menu. New Expedition accepts a displayed seed
-(random seed generated outside the simulation), difficulty and optional guided
-introduction. Explain that this is command, not manual flight. Confirm before
-overwriting an existing save. Continue is enabled only for a valid save; invalid
-save presents an error, export/reset choices and keeps the original bytes.
+Boot -> validate content -> illustrated main menu (New Game / Load Game /
+Settings / About). Settings and recovery work before a run starts; Save and
+Export are disabled until a real run is started/imported. About credits
+Miroslav Plese. New Game opens mission selection, seed and difficulty.
+
+The full Cartographer campaign is unchanged. Survey, flight-recorder recovery
+and convoy escort start with the corresponding actual Haven contract accepted,
+including its existing 15-simulation-minute deadline and objective mechanics.
+Generated exploration chooses one of those commissions from the displayed
+uint32 seed; Generate uses browser randomness outside the simulation to choose
+a new displayed seed. All options leave the full campaign available. Contract
+state already persists and validates, so no additional save fields are needed.
+
+Browsing New Game or Settings never writes a save. Begin confirms replacement
+of a live run or a valid saved run; existing bytes remain until the new run is
+explicitly saved or autosaved during play. Load Game exposes Continue only for
+a valid save, previous-slot recovery, validated import and diagnostic export/
+confirmed discard without losing original corrupt bytes.
+
+Screen changes fade out for 160ms, swap while covered, then fade in for 160ms.
+Input and tactical ticking are blocked across both phases. Focus moves into the
+new dialog and Tab stays within it; closing returns to command controls. Reduced
+motion removes the animation and delay. Tactical shortcuts do not start a run
+or execute commands behind a menu.
 
 First encounter begins paused. A short staged introduction teaches selection,
 crew move, power allocation, weapon targeting, pause and map without freezing
@@ -58,6 +77,13 @@ player-controllable mitigation, not a random unavoidable death.
 Open region map -> choose known route -> preview fuel/danger/services ->
 confirm jump -> travel time and possible interruption -> arrive at system ->
 passive contacts -> scan/probe -> identify location -> choose investigation.
+
+The top icon toolbar (left of Settings) opens navigation, dock/operations,
+journal and field manual. Navigation has an interstellar route diagram and an
+orbital system schematic. Both use only actual known systems/contacts. Map
+nodes select/highlight the corresponding course card; its existing command
+checks, jump confirmation, fuel costs and travel consequences remain authoritative.
+Orbits/positions are illustrative, not claims about physical orbital mechanics.
 
 Map connections show known versus undiscovered routes; do not reveal hidden
 content merely because its object exists. In-system travel consumes time and

@@ -193,6 +193,32 @@ icons, patterns or numeric values. Drones without installed equipment show
 
 ## 6. HUD interaction details
 
+`useScreenTransition` owns the bounded exit/swap/entry lifecycle, reentry lock,
+cleanup and focus restoration. Modal input is trapped in the topmost dialog;
+the underlying deck is inert and hidden from assistive navigation. Transition
+state participates in the controller's interaction pause.
+
+`NavigationMap` renders the actual revealed region graph or current-system
+contacts as an SVG schematic with keyboard-selectable nodes. IDs connect nodes
+to real course cards; selection alone cannot bypass the command gateway.
+`game/scenarios.ts` creates the normal run and accepts an existing mission
+through that gateway, rather than inventing parallel scenario progress.
+
+Settings owns renderer quality (`auto`, `high`, `balanced`, `performance`) and
+the initially false diagnostics switch. Scene consumes quality changes in its
+actual resolution selection. Its FPS output exists only when diagnostics are
+enabled. The ship log is a transparent, bounded, scrollable overlay below the
+expedition tile; only its own rectangle intercepts pointer input.
+
+The crew-order popup uses the selected Pixi room's local-to-global transform,
+canvas viewport rectangle and measured DOM popup dimensions. It follows layout/
+resize changes and clamps to the viewport without changing room hitboxes.
+Ship Systems retains an accessible room list; returning from it focuses a room
+task control after the transition and room anchor have committed. Resizing does
+not steal task focus. The popup layers above drill notices but below dialogs.
+Escape dismisses the popup. All task buttons reuse existing
+dispatch, paused queue, authority and failure-message behavior.
+
 Left click selects crew, room, weapon or contact. Right click issues a move/task
 to the hovered room for selected crew; offer a visible equivalent action so
 right click is not required. Selecting a ready weapon enters targeting; clicking

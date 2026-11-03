@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { beginExpedition, continueExpedition } from './journeys';
 
 const basePath = process.env.STARSHIP_BASE_PATH ?? '/';
 
@@ -6,14 +7,14 @@ test('deployment base loads scripts, styles, original art and a saved expedition
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(basePath);
-  await expect(page.getByRole('dialog', { name: 'Expedition briefing', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Main menu', exact: true })).toBeVisible();
   const assets = await page.evaluate(() => [
     ...Array.from(document.querySelectorAll<HTMLScriptElement>('script[src]'), element => element.src),
     ...Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'), element => element.href),
   ]);
   expect(assets.length).toBeGreaterThanOrEqual(2);
   for (const asset of assets) expect(new URL(asset).pathname.startsWith(`${basePath}assets/`)).toBe(true);
-  const art = ['space.png', 'wayfarer-hull.png', 'corsair-hull.png'].map(file => `${basePath}art/${file}`);
+  const art = ['space.png', 'wayfarer-hull.png', 'corsair-hull.png', 'exploration-hero.png'].map(file => `${basePath}art/${file}`);
   await expect.poll(() => page.evaluate(() => performance.getEntriesByType('resource')
     .filter(entry => entry instanceof PerformanceResourceTiming && entry.initiatorType === 'img')
     .map(entry => new URL(entry.name).pathname))).toEqual(expect.arrayContaining(art));
@@ -22,13 +23,13 @@ test('deployment base loads scripts, styles, original art and a saved expedition
     expect(response.ok()).toBe(true);
     expect(response.headers()['content-type']).toContain('image/png');
   }
-  await page.getByRole('button', { name: 'New Expedition', exact: true }).click();
+  await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction', exact: true }).click();
   await expect(page.locator('.player-readout')).toContainText('30 / 30');
   await page.keyboard.press('f');
-  await expect(page.locator('.navigation-bar [role="status"]')).toContainText('saved and verified');
+  await expect(page.locator('.command-feedback')).toContainText('saved and verified');
   await page.reload();
-  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await continueExpedition(page);
   await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -51,5 +52,5 @@ test('deployment-scoped offline cache preserves other sites and reloads without 
   expect(await page.evaluate(() => caches.has('starship-other-site-sentinel'))).toBe(true);
   await context.setOffline(true);
   await page.reload();
-  await expect(page.getByRole('dialog', { name: 'Expedition briefing', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Main menu', exact: true })).toBeVisible();
 });
