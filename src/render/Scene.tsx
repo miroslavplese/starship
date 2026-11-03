@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Application, Container, Graphics, NineSliceSprite, Rectangle, Sprite, Text, Texture } from 'pixi.js';
 import type { Crew, GameState, Room, Ship, SystemKind } from '../sim/types';
+import { DIAGNOSTICS_ENABLED } from '../game/features';
 
 export interface SceneProps {
   state: GameState;
@@ -55,7 +56,7 @@ function randomSource(seed: number) {
   };
 }
 
-function background(parent: Container, image?: HTMLImageElement) {
+function background(parent: Container, annotations: Container, image?: HTMLImageElement) {
   const g = new Graphics();
   parent.addChild(g);
   g.rect(0, 0, W, H).fill(0x050b16);
@@ -117,15 +118,15 @@ function background(parent: Container, image?: HTMLImageElement) {
   }
   const frame = new Graphics();
   const contact = new Container();
-  parent.addChild(contact);
+  annotations.addChild(contact);
   contact.addChild(frame);
   polygon(frame, [1030, 35, 1550, 35, 1580, 65, 1580, 405, 1555, 430, 1055, 430, 1005, 380, 1005, 65],
     0x762d3c, 0.07, 0x653644);
   line(frame, [1030, 35, 1100, 35], C.red, 2, 0.7);
   line(frame, [1580, 340, 1580, 405, 1555, 430, 1490, 430], C.red, 2, 0.5);
-  label(parent, 'TACTICAL / LOCAL SPACE', 200, 22, 15, 0x91adbf);
+  label(annotations, 'TACTICAL / LOCAL SPACE', 200, 22, 15, 0x91adbf);
   const contactLabel = label(contact, 'HOSTILE CONTACT', 1040, 54, 15, 0xd29b9e);
-  label(parent, 'WAYFARER / INTERNAL SCHEMATIC', 200, 548, 15);
+  label(annotations, 'WAYFARER / INTERNAL SCHEMATIC', 200, 548, 15);
   return { contact, contactLabel };
 }
 
@@ -706,8 +707,8 @@ export default function Scene(props: SceneProps) {
         } catch { /* Hostile contacts retain the original procedural hull fallback. */ }
         if (cancelled) { dispose(); return; }
         const backgroundLayer = new Container();
-        world.addChild(backgroundLayer);
-        const backdrop = background(backgroundLayer, spaceImage);
+        app.stage.addChildAt(backgroundLayer, 0);
+        const backdrop = background(backgroundLayer, world, spaceImage);
         backgroundLayer.cacheAsTexture({ resolution: 1, antialias: false });
         const effects = new Graphics();
         const fit = () => {
@@ -715,10 +716,17 @@ export default function Scene(props: SceneProps) {
           const width = Math.max(1, element.clientWidth);
           const height = Math.max(1, element.clientHeight);
           app.renderer.resize(width, height);
+          // Auto-density rounds buffer pixels; the CSS viewport must still match its host exactly.
+          app.canvas.style.width = '100%';
+          app.canvas.style.height = '100%';
           frameDirty = true;
           const scale = Math.min(width / W, height / H);
           world.scale.set(scale);
           world.position.set((width - W * scale) / 2, (height - H * scale) / 2);
+          // Cover the viewport with scenery; keep the tactical transform contained for room hit targets.
+          const cover = Math.max(width / W, height / H);
+          backgroundLayer.scale.set(cover);
+          backgroundLayer.position.set((width - W * cover) / 2, (height - H * cover) / 2);
         };
         observer = new ResizeObserver(fit);
         observer.observe(element);
@@ -765,10 +773,8 @@ export default function Scene(props: SceneProps) {
             changed = true;
             const contactVisible = p.state.encounter !== 'none';
             const contactText = p.state.encounter === 'derelict' ? 'DERELICT / NO SIGNAL' : 'HOSTILE CONTACT';
-            const backdropChanged = backdrop.contact.visible !== contactVisible || backdrop.contactLabel.text !== contactText;
             backdrop.contact.visible = contactVisible;
             if (backdrop.contactLabel.text !== contactText) backdrop.contactLabel.text = contactText;
-            if (backdropChanged) backgroundLayer.updateCacheTexture();
             const player = p.state.ships.find(s => s.id === 'player');
             const contact = p.state.encounter === 'hostile' || p.state.encounter === 'surrender'
               ? p.state.ships.find(s => s.id !== 'player' && (s.doctrine === 'pirate' || s.doctrine === 'military'))
@@ -830,11 +836,12 @@ export default function Scene(props: SceneProps) {
           }
           if (changed) {
             app.render();
-            submittedFrames++;
+            element.dataset.rendererReady = 'true';
+            if (DIAGNOSTICS_ENABLED && p.diagnostics) submittedFrames++;
           }
           const measuredMS = time - measuredSince;
           if (measuredMS >= 1000) {
-            setRenderedFPS(submittedFrames * 1000 / measuredMS);
+            if (DIAGNOSTICS_ENABLED && p.diagnostics) setRenderedFPS(submittedFrames * 1000 / measuredMS);
             submittedFrames = 0;
             measuredSince = time;
           }
@@ -853,11 +860,11 @@ export default function Scene(props: SceneProps) {
 
   return <div ref={host} className="tactical-scene" role="region"
     aria-label="Tactical cutaway of Wayfarer and current contact. Use the room and crew controls for keyboard orders."
-    style={{ width: '100%', height: '100%', minHeight: 280, overflow: 'hidden', position: 'relative' }}>
+    style={{ width: '100%', height: '100%', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
     {failure && <p role="status" style={{ color: '#b8ccd9', padding: 24 }}>
       Tactical graphics are unavailable. Room and crew orders remain available in the control panels.
     </p>}
-    {!failure && props.diagnostics && <div className="graphics-diagnostics" style={{
+    {!failure && DIAGNOSTICS_ENABLED && props.diagnostics && <div className="graphics-diagnostics" style={{
       position: 'absolute', right: 12, bottom: 6, display: 'flex', alignItems: 'center', gap: 6,
       color: '#b8ccd9', background: '#08111df2', border: '1px solid #3c5264', padding: '3px 6px',
       fontSize: 11, lineHeight: '16px', whiteSpace: 'nowrap',

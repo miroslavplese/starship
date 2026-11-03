@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeDialog, dismissScreen, beginExpedition, continueExpedition, enableDiagnostics } from './journeys';
+import { closeDialog, dismissScreen, beginExpedition, continueExpedition, setGraphicsQuality } from './journeys';
 
 test('cinematic menu, pre-run settings and credits never write a save', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
@@ -46,13 +46,8 @@ test('two-level navigation, render settings and anchored queued crew orders', as
   await page.goto('/');
   await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
-  await enableDiagnostics(page, 'performance');
-  await expect(page.locator('.graphics-diagnostics')).toContainText('50% resolution');
-  const graphicsBox = (await page.locator('.graphics-diagnostics').boundingBox())!;
-  const logBox = (await page.locator('.event-feed').boundingBox())!;
-  expect(graphicsBox.y).toBeGreaterThanOrEqual(logBox.y + logBox.height);
-  const resolution = await page.locator('.tactical-scene canvas').evaluate(canvas => (canvas as HTMLCanvasElement).width / canvas.clientWidth);
-  expect(resolution).toBeCloseTo(.5, 2);
+  await setGraphicsQuality(page, 'performance');
+  await expect.poll(() => page.locator('.tactical-scene canvas').evaluate(canvas => (canvas as HTMLCanvasElement).width / canvas.clientWidth)).toBeCloseTo(.5, 2);
   const settings = page.getByRole('button', { name: 'Settings', exact: true });
   const navBox = (await page.getByRole('button', { name: 'NAVIGATION', exact: true }).boundingBox())!;
   expect(navBox.x).toBeLessThan((await settings.boundingBox())!.x);
@@ -79,16 +74,16 @@ test('two-level navigation, render settings and anchored queued crew orders', as
   expect(before.y).toBeGreaterThanOrEqual(8);
   await page.screenshot({ path: info.outputPath('room-orders.png') });
   await expect(page.getByRole('button', { name: 'move', exact: true })).toBeFocused();
-  await page.getByRole('button', { name: 'repair', exact: true }).press('Enter');
-  await expect(page.locator('.command-feedback')).toContainText('Order queued (1)');
   await page.setViewportSize({ width: 1100, height: 760 });
   await expect.poll(async () => (await popup.boundingBox())!.x).not.toBe(before.x);
   const after = (await popup.boundingBox())!;
   expect(after.x + after.width).toBeLessThanOrEqual(1100);
   expect(after.y + after.height).toBeLessThanOrEqual(760);
-  await expect(page.getByRole('button', { name: 'repair', exact: true })).toBeFocused();
-  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'move', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: 'repair', exact: true }).press('Enter');
+  await expect(page.locator('.command-feedback')).toContainText('Order queued (1)');
   await expect(popup).toHaveCount(0);
+  await expect(page.locator('.crew-card.selected')).toBeFocused();
 });
 
 test('exit and entry fades block duplicate activation and restore modal focus', async ({ page }) => {

@@ -1,6 +1,7 @@
 import type { Command, GameState, Result } from '../sim/types';
 import { command, createGame, step } from '../sim/game';
 import { decode, PREVIOUS_KEY, save, SAVE_KEY } from './persistence';
+import { DIAGNOSTICS_ENABLED } from './features';
 
 export class GameController {
   state: GameState;
@@ -38,7 +39,7 @@ export class GameController {
   }
   advance(ms: number) {
     if (this.paused || this.modal || this.state.phase !== 'expedition') { this.accumulator = 0; return; }
-    if (ms > 250) this.message = 'Performance warning: elapsed backlog discarded.';
+    if (ms > 250 && DIAGNOSTICS_ENABLED) this.message = 'Performance warning: elapsed backlog discarded.';
     this.accumulator += Math.min(250, ms);
     let updated = false;
     while (this.accumulator >= 50) {
@@ -62,13 +63,13 @@ export class GameController {
   hidden() { this.forcedPause = 'Paused while away'; this.reason = 'Paused while away'; this.accumulator = 0; this.notify(); }
   persist() {
     if (this.training) { this.message = 'Training is reversible and does not overwrite your expedition save.'; this.notify(); return { ok: false as const, message: this.message }; }
-    const r = save(this.state); this.message = r.ok ? r.quarantined ? 'Expedition saved and verified. Corrupt original retained in recovery diagnostics; export before discarding.' : 'Expedition saved and verified.' : r.message; this.notify(); return r;
+    const r = save(this.state); this.message = r.ok ? r.quarantined ? 'Expedition saved and verified. An unreadable backup was kept for recovery.' : 'Expedition saved and verified.' : r.message; this.notify(); return r;
   }
   load(previous = false) {
     if (this.training) { this.message = 'Return from the drill before loading another expedition.'; this.notify(); return; }
     try {
       const text = localStorage.getItem(previous ? PREVIOUS_KEY : SAVE_KEY);
-      if (!text) throw new Error('No saved expedition in this slot.');
+      if (!text) throw new Error(previous ? 'No previous save is available.' : 'No saved expedition is available.');
       this.replace(decode(text)); this.message = 'Expedition loaded paused. Resume explicitly.';
     } catch (e) { this.message = `Load failed: ${e instanceof Error ? e.message : String(e)}`; }
     this.notify();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { recorderKey } from '../../src/content/expedition';
-import { CORRUPT_KEY, PREVIOUS_KEY, SAVE_KEY, decode, discardCorruptSaves, encode, recoveryDiagnostics, save } from '../../src/game/persistence';
+import { CORRUPT_KEY, PREVIOUS_KEY, SAVE_KEY, decode, discardCorruptSaves, encode, recoveryDiagnostics, save, saveAvailability } from '../../src/game/persistence';
 import { createGame } from '../../src/sim/game';
 
 describe('saved content references', () => {
@@ -23,6 +23,26 @@ describe('saved content references', () => {
   }
 
   describe('continued saving after corrupt-slot recovery', () => {
+    it('only offers recovery for unreadable slots or a retained recovery backup, without changing bytes', () => {
+      const storage = memoryStorage(), good = encode(createGame(12345));
+      expect(saveAvailability(storage)).toEqual({ canContinue: false, damaged: false, error: null });
+      storage.setItem(SAVE_KEY, good);
+      storage.setItem(PREVIOUS_KEY, good);
+      expect(saveAvailability(storage)).toEqual({ canContinue: true, damaged: false, error: null });
+      storage.setItem(PREVIOUS_KEY, '{broken');
+      expect(saveAvailability(storage)).toMatchObject({ canContinue: true, damaged: true, error: expect.any(String) });
+      expect(storage.getItem(PREVIOUS_KEY)).toBe('{broken');
+      expect(discardCorruptSaves(storage)).toEqual({ ok: true });
+      expect(storage.getItem(SAVE_KEY)).toBe(good);
+      expect(storage.getItem(PREVIOUS_KEY)).toBeNull();
+      storage.setItem(CORRUPT_KEY, '{broken');
+      expect(saveAvailability(storage)).toEqual({ canContinue: true, damaged: true, error: null });
+      storage.setItem(SAVE_KEY, '{second');
+      expect(saveAvailability(storage)).toMatchObject({ canContinue: false, damaged: true, error: expect.any(String) });
+      expect(storage.getItem(CORRUPT_KEY)).toBe('{broken');
+      expect(storage.getItem(SAVE_KEY)).toBe('{second');
+    });
+
     it('quarantines the exact corrupt primary before saving and preserves the good previous slot', () => {
       const state = createGame(12345), good = encode(state), storage = memoryStorage();
       storage.setItem(SAVE_KEY, '{broken');
@@ -44,7 +64,7 @@ describe('saved content references', () => {
       storage.setItem(SAVE_KEY, '{second');
       storage.setItem(PREVIOUS_KEY, good);
       storage.setItem(CORRUPT_KEY, '{first');
-      expect(save(state, storage)).toMatchObject({ ok: false, message: expect.stringContaining('different corrupt save') });
+      expect(save(state, storage)).toMatchObject({ ok: false, message: expect.stringContaining('different damaged save') });
       expect(JSON.parse(recoveryDiagnostics(storage))).toMatchObject({ primary: '{second', previous: good, quarantined: '{first' });
       expect(discardCorruptSaves(storage)).toEqual({ ok: true });
       expect(storage.getItem(PREVIOUS_KEY)).toBe(good);
@@ -67,7 +87,7 @@ describe('saved content references', () => {
     it('leaves oversized corrupt bytes in place until their explicit export/discard', () => {
       const state = createGame(12345), storage = memoryStorage(), oversized = 'x'.repeat(1048577);
       storage.setItem(SAVE_KEY, oversized);
-      expect(save(state, storage)).toMatchObject({ ok: false, message: expect.stringContaining('1 MiB diagnostic limit') });
+      expect(save(state, storage)).toMatchObject({ ok: false, message: expect.stringContaining('1 MiB recovery-backup limit') });
       expect(storage.getItem(SAVE_KEY)).toBe(oversized);
       expect(storage.getItem(CORRUPT_KEY)).toBeNull();
     });
@@ -93,7 +113,7 @@ describe('saved content references', () => {
       let written = false;
       storage.setItem = (key, value) => { write(key, value); if (key === CORRUPT_KEY) written = true; };
       storage.getItem = key => key === CORRUPT_KEY && written ? '{truncated' : read(key);
-      expect(save(state, storage)).toMatchObject({ ok: false, message: expect.stringContaining('diagnostic read-back failed') });
+      expect(save(state, storage)).toMatchObject({ ok: false, message: expect.stringContaining('Recovery backup could not be verified') });
       expect(storage.getItem(SAVE_KEY)).toBe('{broken');
     });
 

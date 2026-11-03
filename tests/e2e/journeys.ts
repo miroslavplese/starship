@@ -38,6 +38,21 @@ export async function returnFromDrill(page: Page) {
   await page.getByRole('button', { name: 'Return to expedition unchanged', exact: true }).click({ timeout: 30000 });
 }
 
+export async function selectPlayerRoom(page: Page, name: string) {
+  await page.getByRole('button', { name: 'SHIP', exact: true }).click();
+  await page.locator('.operation-buttons button').filter({ hasText: `Wayfarer: ${name}` }).click();
+  await expect(page.getByRole('dialog', { name: 'systems', exact: true })).toHaveCount(0);
+  await expect(page.locator('.screen-fade')).toHaveCount(0);
+  await expect(page.locator('.room-inspector')).toBeVisible();
+}
+
+export async function setGraphicsQuality(page: Page, quality: string) {
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Tactical graphics quality' }).selectOption(quality);
+  await closeDialog(page);
+  await expect(page.locator('.tactical-scene')).toHaveAttribute('data-renderer-ready', 'true');
+}
+
 export async function enableDiagnostics(page: Page, quality?: string) {
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   if (quality) await page.getByRole('combobox', { name: 'Tactical graphics quality' }).selectOption(quality);

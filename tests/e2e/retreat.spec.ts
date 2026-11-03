@@ -31,7 +31,7 @@ test('withdrawn-contact stranding pauses, persists and requires explicit paid re
   await closeDialog(page);
   await page.keyboard.press('f');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Load current slot', exact: true }).click();
+  await page.getByRole('button', { name: 'Load saved game', exact: true }).click();
   await expect(page.locator('.dialog-footer')).toContainText('Expedition loaded paused');
   await closeDialog(page);
   await page.screenshot({ path: `test-results/${test.info().project.name}-stranded.png` });

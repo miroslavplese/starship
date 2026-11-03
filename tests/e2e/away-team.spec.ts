@@ -44,7 +44,7 @@ test('physical wreck traversal, full-hold rejection, blocked recall, paid extrac
   await expect(page.getByRole('progressbar', { name: 'Ivo health' })).toHaveAttribute('value', '90');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const exported = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export JSON', exact: true }).click();
+  await page.getByRole('button', { name: 'Download save file', exact: true }).click();
   const download = await exported;
   expect(decode(await readFile((await download.path())!, 'utf8')).ships[0].cargo).toEqual({});
   await closeDialog(page);

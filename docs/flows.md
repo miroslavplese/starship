@@ -9,7 +9,10 @@ resolve all references below to rescue/capture rules, thresholds and pacing.
 Boot -> validate content -> illustrated main menu (New Game / Load Game /
 Settings / About). Settings and recovery work before a run starts; Save and
 Export are disabled until a real run is started/imported. About credits
-Miroslav Plese. New Game opens mission selection, seed and difficulty.
+Miroslav Plese and shows automatically generated version/build and UTC build
+time, without a gameplay pause notice. New Game opens mission selection, seed
+and difficulty. Ordinary Settings offers player presentation choices, not
+developer diagnostics; those require the explicit build-time feature flag.
 
 The full Cartographer campaign is unchanged. Survey, flight-recorder recovery
 and convoy escort start with the corresponding actual Haven contract accepted,
@@ -22,8 +25,9 @@ state already persists and validates, so no additional save fields are needed.
 Browsing New Game or Settings never writes a save. Begin confirms replacement
 of a live run or a valid saved run; existing bytes remain until the new run is
 explicitly saved or autosaved during play. Load Game exposes Continue only for
-a valid save, previous-slot recovery, validated import and diagnostic export/
-confirmed discard without losing original corrupt bytes.
+a valid save, previous-save restoration and validated import. When damaged bytes
+exist, Load Game and Settings offer recovery-backup download and confirmed
+removal of unreadable saves, preserving working saves and the live expedition.
 
 Screen changes fade out for 160ms, swap while covered, then fade in for 160ms.
 Input and tactical ticking are blocked across both phases. Focus moves into the

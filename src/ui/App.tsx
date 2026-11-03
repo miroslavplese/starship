@@ -3,7 +3,8 @@ import { GameController } from '../game/controller';
 import { AudioCues } from '../game/audio';
 import { createDrill } from '../game/training';
 import { WEAPONS } from '../content/weapons';
-import { decode, discardCorruptSaves, encode, recoveryDiagnostics, SAVE_KEY } from '../game/persistence';
+import { decode, discardCorruptSaves, encode, recoveryDiagnostics, saveAvailability } from '../game/persistence';
+import { DIAGNOSTICS_ENABLED } from '../game/features';
 import { jumpCost } from '../sim/game';
 import { createScenario, SCENARIOS, type Scenario } from '../game/scenarios';
 import { cargoMass, cargoUsed, fittingReason, GOODS, tradeQuote, UPGRADES } from '../content/region';
@@ -53,6 +54,7 @@ export default function App() {
   const [started, setStarted] = useState(false);
   const [debrief, setDebrief] = useState(false);
   const [canContinue, setCanContinue] = useState(false);
+  const [hasDamagedSave, setHasDamagedSave] = useState(false);
   const [tutorial, setTutorial] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [mapRegion, setMapRegion] = useState(false);
@@ -121,19 +123,25 @@ export default function App() {
   useEffect(() => { audio.current.muted = muted; }, [muted]);
   useEffect(() => {
     try {
-      const bytes = localStorage.getItem(SAVE_KEY);
-      setCanContinue(Boolean(bytes && decode(bytes)));
+      const saved = saveAvailability();
+      setCanContinue(saved.canContinue);
+      setHasDamagedSave(saved.damaged);
+      if (saved.error && !api.message) {
+        console.warn('Saved expedition unavailable', saved.error);
+        api.message = 'Your saved expedition could not be opened. Use Load Game to restore a previous save or load a backup file.';
+        api.notify();
+      }
     } catch (error) {
       setCanContinue(false);
-      api.message = `Saved expedition unavailable: ${error instanceof Error ? error.message : String(error)}. Use Import / recovery.`;
+      api.message = `Saved game unavailable: ${error instanceof Error ? error.message : String(error)}. Use Load Game to load a backup file.`;
       api.notify();
     }
-  }, [api, started, panel]);
+  }, [api, started, panel, api.message]);
   useEffect(() => () => audio.current.dispose(), []);
   useEffect(() => {
     if (import.meta.env.PROD && 'serviceWorker' in navigator) {
       void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(error => {
-        api.message = `Offline cache unavailable: ${error instanceof Error ? error.message : String(error)}. Online play and JSON exports remain available.`;
+        api.message = `Offline play unavailable: ${error instanceof Error ? error.message : String(error)}. You can still play online and download save files.`;
         api.notify();
       });
     }
@@ -219,14 +227,17 @@ export default function App() {
   };
   const task = (task: Task) => {
     if(!selected || !room) { api.message = 'Select a living crew member and a room first.'; api.notify(); return; }
-    send({ type: 'crew', crew: selected.id, room: room.id, task });
+    if (send({ type: 'crew', crew: selected.id, room: room.id, task }).ok) {
+      setSelectedRoom(null);
+      document.querySelector<HTMLElement>('.crew-card.selected')?.focus();
+    }
   };
   const download = () => {
     try { const url = URL.createObjectURL(new Blob([encode(s)], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = `starship-${s.seed}-${s.tick}.json`; a.click(); URL.revokeObjectURL(url); }
     catch(e) { api.message = `Export failed: ${e instanceof Error ? e.message : String(e)}`; api.notify(); }
   };
-  const downloadRecovery = () => {
-    try { const url = URL.createObjectURL(new Blob([recoveryDiagnostics()], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = `starship-recovery-diagnostics.json`; a.click(); URL.revokeObjectURL(url); }
+  const downloadRecovery = (developer = false) => {
+    try { const url = URL.createObjectURL(new Blob([recoveryDiagnostics()], { type: 'application/json' })); const a = document.createElement('a'); a.href = url; a.download = developer ? 'starship-recovery-diagnostics.json' : 'starship-recovery-backup.json'; a.click(); URL.revokeObjectURL(url); }
     catch(e) { api.message = `Recovery export failed: ${e instanceof Error ? e.message : String(e)}`; api.notify(); }
   };
   const startDrill = (kind: 'emergency' | 'boarding') => {
@@ -264,18 +275,19 @@ export default function App() {
       </section>
       <section className="ftl-readout"><span className="eyebrow">FTL DRIVE</span><progress aria-label="FTL charge" value={p.ftl} max={600} /><div><strong>{p.ftl >= 600 ? 'JUMP READY' : `CHARGING ${Math.floor(p.ftl / 6)}%`}</strong><button onClick={() => { setMapRegion(true); open('map'); }}>JUMP <kbd>J</kbd></button></div></section>
       <nav className="command-icons" aria-label="Command screens">
-        <button aria-label="NAVIGATION" title="Navigation (M)" onClick={() => { setMapRegion(false); setMapSelection(null); open('map'); }}>◎</button>
-        <button aria-label={loc.kind === 'station' ? 'DOCK / STATION' : 'OPERATIONS'} title={loc.kind === 'station' ? 'Dock / station' : 'Field operations'} onClick={() => open('station')}>⬡</button>
-        <button aria-label={`JOURNAL ${s.coordinates.length}/3`} title="Expedition journal" onClick={() => open('journal')}>▤</button>
-        <button aria-label="FIELD MANUAL" title="Field manual" onClick={() => open('help')}>?</button>
-      </nav><button className="settings-button frame" aria-label="Settings" title="Settings" onClick={() => open('settings')}>⚙</button>
+        <button className="frame" aria-label="NAVIGATION" title="Navigation (M)" onClick={() => { setMapRegion(false); setMapSelection(null); open('map'); }}>◎</button>
+        <button className="frame" aria-label={loc.kind === 'station' ? 'DOCK / STATION' : 'OPERATIONS'} title={loc.kind === 'station' ? 'Dock / station' : 'Field operations'} onClick={() => open('station')}>⬡</button>
+        <button className="frame" aria-label={`JOURNAL ${s.coordinates.length}/3`} title="Expedition journal" onClick={() => open('journal')}>▤</button>
+        <button className="frame" aria-label="FIELD MANUAL" title="Field manual" onClick={() => open('help')}>?</button>
+        <button className="settings-button frame" aria-label="Settings" title="Settings" onClick={() => open('settings')}>⚙</button>
+      </nav>
       <section className={`enemy-readout frame ${!enemy ? 'quiet' : ''}`}>
         <div className="hull-label"><span>{enemy ? 'CONTACT HULL' : 'EXPEDITION'}</span><strong>{enemy ? enemyIntel || enemy.doctrine === 'derelict' ? `${Math.ceil(enemy.hull)} / ${enemy.maxHull}` : '? / ?' : `${s.coordinates.length} / 3`}</strong></div>
         {enemy ? enemyIntel || enemy.doctrine === 'derelict' ? <><Segments value={enemy.hull} max={enemy.maxHull} color="red" /><div className="enemy-name"><span>SHIELDS {'●'.repeat(Math.ceil(enemy.shields)) || 'DOWN'}</span><b>{enemy.name}</b></div></> : <p className="objective-line">TACTICAL INTELLIGENCE UNAVAILABLE · Restore sensors</p> : <><p className="objective-line">{s.contracts.find(c => c.status === 'active')?.name ?? (s.archive ? 'Return the archive to Haven Anchorage' : s.coordinates.length === 3 ? 'Open the Terminus route' : 'Recover the Cartographer coordinates')}</p><small>{system.name} / {loc.name}</small></>}
       </section>
     </header>
     <section className="tactical-area" aria-label="Tactical ship view">
-      <Scene state={s} selectedCrew={selectedCrew} selectedWeapon={selectedWeapon} onRoom={roomClick} onCrew={id => { if (s.crew.some(c => c.id === id && c.home === 'player')) { setSelectedCrew(id); setSelectedRoom(null); } }} reducedMotion={reducedMotion} enemyIntel={enemyIntel} quality={quality} diagnostics={diagnostics} selectedRoom={selectedRoom} onRoomAnchor={setRoomAnchor} />
+      <Scene state={s} selectedCrew={selectedCrew} selectedWeapon={selectedWeapon} onRoom={roomClick} onCrew={id => { if (s.crew.some(c => c.id === id && c.home === 'player')) { setSelectedCrew(id); setSelectedRoom(null); } }} reducedMotion={reducedMotion} enemyIntel={enemyIntel} quality={quality} diagnostics={DIAGNOSTICS_ENABLED && diagnostics} selectedRoom={selectedRoom} onRoomAnchor={setRoomAnchor} />
       <aside className="crew-roster">
         <div className="eyebrow">CREW MANIFEST</div>
         {s.crew.filter(c => c.home === 'player').map((c, i) => <button key={c.id} onClick={() => setSelectedCrew(c.id)} className={`crew-card frame ${selectedCrew === c.id ? 'selected' : ''} ${c.health <= 0 ? 'dead' : ''}`} aria-pressed={selectedCrew === c.id}><span className={`portrait portrait-${i % 3}`} aria-hidden="true"><i /></span><span><b>{c.name}</b><progress aria-label={`${c.name} health`} max="100" value={c.health} /><small>{c.health <= 0 ? 'DECEASED' : c.shipId !== 'player' ? `AWAY · ${c.task}` : c.task.toUpperCase()}</small></span><kbd>{i < 3 ? i + 1 : ''}</kbd></button>)}
@@ -291,9 +303,9 @@ export default function App() {
       {s.customs && <div className="encounter-choice frame"><b>CUSTOMS INTERCEPT</b><p>Submit: confiscation/fine if illegal. Bribe: 20 CR. Conceal: 45% success. EW spoof: 85%. Flee: reputation -5. Fight: tactical encounter.</p>{(['submit', 'bribe', 'conceal', 'spoof', 'flee', 'fight'] as const).map(choice => <button key={choice} onClick={() => send({ type: 'customs', choice })}>{choice.toUpperCase()}</button>)}</div>}
       {room && selected && roomAnchor && <div ref={roomPopup} className="room-inspector frame" role="region" aria-label={`${room.name} crew orders`} style={popupPosition}><button className="close-mini" aria-label="Close room inspector" onClick={() => setSelectedRoom(null)}>×</button><b>{roomShip?.name} / {room.name}</b><p>O₂ {Math.round(room.oxygen * 100)}% · FIRE {Math.round(room.fire * 100)}% · BREACH {room.breach.toFixed(1)}</p><p>{labels[room.system]} · {roomShip?.systems.find(x => x.kind === room.system)?.health.toFixed(1)} HP</p><small>{selected.name} orders</small><div className="task-buttons">{(['move', 'repair', 'extinguish', 'operate', 'heal', 'search', 'fight', 'sabotage'] as const).map(t => <button key={t} onClick={() => task(t)}>{t}</button>)}</div></div>}
       <aside className="event-feed" aria-label="Ship log" tabIndex={0}><span className="eyebrow">SHIP LOG</span>{s.events.slice(-20).reverse().map(e => <div key={e.id} className={e.kind}><time>{Math.floor(e.tick / 1200).toString().padStart(2, '0')}:{Math.floor(e.tick / 20 % 60).toString().padStart(2, '0')}</time>{e.message}</div>)}</aside>
+      <div className={`command-feedback feedback ${api.message.toLowerCase().includes('fail') ? 'warning' : ''}`} role="status">{api.message || 'Command link stable. All systems nominal.'}</div>
       {tutorial && <aside className="tutorial frame"><span className="eyebrow">COMMAND ACADEMY · {Math.min(s.tutorial + 1, 4)}/4</span><h2>{lessons[Math.min(s.tutorial, 3)].title}</h2><p>{lessons[Math.min(s.tutorial, 3)].body}</p><small>{lessons[Math.min(s.tutorial, 3)].check}</small><div><button onClick={() => { if(s.tutorial >= 3) setTutorial(false); else if(lessons[s.tutorial].done(s)) { s.tutorial++; api.notify(); } else { api.message = 'Try the indicated action, or skip the optional lesson.'; api.notify(); } }}> {s.tutorial >= 3 ? 'Take command' : 'Check action / Next'}</button><button onClick={() => setTutorial(false)}>Skip introduction</button></div></aside>}
     </section>
-    <div className={`command-feedback feedback ${api.message.toLowerCase().includes('fail') ? 'warning' : ''}`} role="status">{api.message || 'Command link stable. All systems nominal.'}</div>
     <footer className="instruments">
       <section className="reactor-gauge"><span className="eyebrow">REACTOR</span><Segments value={reactorBudget - used} max={p.reactor} /><b>{reactorBudget - used} SPARE</b><small>{used}/{reactorBudget} used</small><small>{reactorBudget}/{p.reactor} online</small></section>
       <section className="systems-panel frame"><h2>SYSTEMS <button onClick={() => open('systems')}>DETAILS</button></h2><div className="system-tiles">{(['shields', 'engines', 'oxygen', 'weapons', 'medbay'] as const).map(kind => { const x = p.systems.find(x => x.kind === kind)!; return <div key={kind} className={`system-tile ${x.health <= 0 ? 'offline' : ''}`}><span className="system-icon">{glyphs[kind]}</span><b>{labels[kind]}</b><span className="power-controls"><button aria-label={`Decrease ${kind} power`} onClick={() => send({ type: 'power', ship: 'player', system: kind, delta: -1 })}>−</button><Segments value={x.power} max={x.cap} /><button aria-label={`Increase ${kind} power`} onClick={() => send({ type: 'power', ship: 'player', system: kind, delta: 1 })}>+</button></span><small>{x.ion > 0 ? 'ION LOCK' : `HP ${x.health.toFixed(1)}/${x.max}`}</small></div>; })}</div></section>
@@ -328,7 +340,7 @@ export default function App() {
     </aside>}
     {!started && panel === null && <div className="title-screen" role="dialog" aria-modal="true" aria-label="Main menu">
       <img className="title-art" src={`${import.meta.env.BASE_URL}art/exploration-hero.png`} alt="The Wayfarer explores a blue planet and an ancient orbital ruin." />
-      <section className="title-content"><span className="eyebrow">A SHIP. A CREW. AN UNKNOWN HORIZON.</span><h1>STAR<span>SHIP</span></h1><p className="title-subtitle">EXPEDITION COMMAND</p><p>Beyond the last charted star,<br />your crew’s story begins.</p>
+      <section className="title-content"><h1>STAR<span>SHIP</span></h1><p className="title-subtitle">EXPEDITION COMMAND</p><p>Beyond the last charted star,<br />your crew’s story begins.</p>
         <nav aria-label="Main menu"><button className="primary" onClick={() => open('new')}>New Game <span aria-hidden="true">01</span></button><button onClick={() => open('load')}>Load Game <span aria-hidden="true">02</span></button><button onClick={() => open('settings')}>Settings <span aria-hidden="true">03</span></button><button onClick={() => open('about')}>About <span aria-hidden="true">04</span></button></nav>
         <small>Command the Wayfarer. Discover what remains.</small>
       </section>
@@ -340,7 +352,7 @@ export default function App() {
       <div className="dialog-actions"><button className="primary" onClick={() => { if(canContinue || started) setConfirm({ text: 'Begin a new expedition? The live run will be replaced. Existing saved bytes are retained until the new run is saved or autosaved during play.', command: { type: 'abandon', confirm: false } }); else newRun(); }}>Begin Expedition</button><button aria-label="Close dialog" onClick={() => open(null)}>Back</button></div><p className="error-text" role="status">{api.message}</p>
     </section></div>}
     {panel && panel !== 'new' && <div className="modal-backdrop"><section className={`dialog frame dialog-${panel}`} role="dialog" aria-modal="true" aria-label={panel}><header><div><span className="eyebrow">WAYFARER / COMMAND INTERFACE</span><h1>{({ map: 'Navigation', station: loc.kind === 'station' ? loc.name : 'Field Operations', crew: 'Crew & Away Teams', systems: 'Ship Systems', journal: 'Expedition Journal', settings: 'Settings', help: 'Captain’s Field Manual', load: 'Load Game & Recovery', about: 'About Starship' })[panel]}</h1></div><button aria-label="Close dialog" onClick={() => open(null)}>CLOSE <kbd>ESC</kbd></button></header>
-      {panel === 'about' && <section className="about-content"><span className="eyebrow">CREATED BY</span><h2>Miroslav Plese</h2><p>Starship is an independent expedition-command game about exploration, difficult choices, and bringing your crew home.</p><p>Original project artwork and procedural tactical graphics. Built with React, TypeScript and PixiJS.</p><p>Your expedition stays in this browser. Export JSON backups to keep your story safe.</p></section>}
+      {panel === 'about' && <section className="about-content"><span className="eyebrow">CREATED BY</span><h2>Miroslav Plese</h2><p>Starship is an independent expedition-command game about exploration, difficult choices, and bringing your crew home.</p><p>Original project artwork and procedural tactical graphics. Built with React, TypeScript and PixiJS.</p><p>Your expedition stays in this browser. Download a save file to keep your story safe.</p><dl className="build-info"><dt>Version</dt><dd>{__STARSHIP_BUILD__.version}</dd><dt>Build</dt><dd>{__STARSHIP_BUILD__.build}</dd><dt>Built (UTC)</dt><dd><time dateTime={__STARSHIP_BUILD__.builtAt}>{__STARSHIP_BUILD__.builtAt.replace('T', ' ').replace('Z', ' UTC')}</time></dd></dl></section>}
       {panel === 'map' && <>
         <div className="tabs"><button className={!mapRegion ? 'active' : ''} onClick={() => setMapRegion(false)}>SYSTEM CONTACTS</button><button className={mapRegion ? 'active' : ''} onClick={() => setMapRegion(true)}>STELLAR REGION</button></div>
         <div className="map-summary"><span>{system.name} · {system.economy} · {system.faction}</span><b>Fuel {p.fuel}/{p.maxFuel} · Cargo mass {cargoMass(s)} · Jump cost {jumpCost(s)}</b></div>
@@ -448,10 +460,10 @@ export default function App() {
       </>}
       {panel === 'journal' && <><div className="journal-objective"><span className="eyebrow">THE CARTOGRAPHER EXPEDITION</span><h2>{s.archive ? 'Return the final archive to Haven' : s.coordinates.length === 3 ? 'Reach Terminus and resolve the guardian' : 'Recover three independent archive coordinates'}</h2><p>Verdant: survey planet II or buy chart. Vesper: investigate Lost relay or buy chart. Nacre: search derelict compartments or buy chart. Required knowledge is permanent and cannot be sold.</p><div className="coordinate-row">{['s2', 's4', 's5'].map(id => <span key={id} className={s.coordinates.includes(id) ? 'obtained' : ''}>{s.coordinates.includes(id) ? '✓' : '◇'} {s.region.find(r => r.id === id)?.name}</span>)}</div></div>{summary}<h2>Market intelligence</h2><p>Snapshots are last-known, not live remote prices. Buy updated intelligence at a station.</p><div className="service-grid">{s.markets.filter(m => m.observed >= 0).map(m => <article key={m.id}><b>{s.region.flatMap(r => r.locations).find(l => l.id === m.id)?.name}</b><small>Observed at tick {m.observed} · Age {Math.floor((s.tick - m.observed) / 20)} sec · {m.event}</small><p>{Object.entries(m.prices).map(([key, v]) => `${key} ${v}`).join(' / ')}</p></article>)}</div><h2>Ship log</h2><ol className="journal-log">{s.events.slice().reverse().map(e => <li key={e.id}><time>T+{(e.tick / 20).toFixed(1)}s</time><span>{e.message}</span></li>)}</ol></>}
       {(panel === 'settings' || panel === 'load') && <div className="service-grid">
-        <article><h2>Local persistence</h2><p>Combat timers, pending orders, crew, markets and seeded outcomes are preserved. Loads always open paused.</p>
+        <article>{panel === 'load' && <h2>Saved expedition</h2>}<p>Your game is saved in this browser, including your crew and pending orders. Loaded games start paused.</p>
           <button disabled={!started} onClick={() => api.persist()}>Save expedition <kbd>F</kbd></button>
-          <button disabled={panel === 'load' && !canContinue} onClick={() => loadRun()}>{panel === 'load' ? 'Continue' : 'Load current slot'}</button><button onClick={() => loadRun(true)}>Recover previous slot</button>
-          <button disabled={!started} onClick={download}>Export JSON</button>
+          <button disabled={panel === 'load' && !canContinue} onClick={() => loadRun()}>{panel === 'load' ? 'Continue' : 'Load saved game'}</button><button onClick={() => loadRun(true)}>Restore previous save</button>
+          <button disabled={!started} onClick={download}>Download save file</button>
           <label className="file-input">Import expedition<input type="file" accept=".json,application/json" onChange={async e => {
             const f = e.target.files?.[0]; if(!f) return;
             try {
@@ -464,8 +476,7 @@ export default function App() {
         </article>
         {panel === 'settings' && <article><h2>Presentation</h2>
           <label>Graphics quality<select aria-label="Tactical graphics quality" value={quality} onChange={e => setQuality(e.target.value as Quality)}><option value="auto">Auto</option><option value="high">High</option><option value="balanced">Balanced</option><option value="performance">Performance</option></select></label>
-          <p>Auto adapts resolution to GPU or software rendering. Performance reduces tactical pixels; interface text stays sharp.</p>
-          <label><input type="checkbox" checked={diagnostics} onChange={e => setDiagnostics(e.target.checked)} /> Show graphics diagnostics / frame rate</label>
+          <p>Auto chooses a quality level for your device. Performance favors smoother play; interface text stays sharp.</p>
           <label><input type="checkbox" checked={muted} onChange={e => setMuted(e.target.checked)} /> Mute synthesized effects</label>
           <label><input type="checkbox" checked={reducedMotion} onChange={e => setReducedMotion(e.target.checked)} /> Reduced motion</label>
           <label>Effects volume<input type="range" min="0" max="0.4" step="0.01" defaultValue="0.15" onChange={e => audio.current.volume = Number(e.target.value)} /></label>
@@ -478,12 +489,13 @@ export default function App() {
       {panel === 'help' && <div className="manual"><h2>Command, don’t pilot</h2><p><kbd>SPACE</kbd> pause/resume · <kbd>1–3</kbd> crew · <kbd>Q / E</kbd> weapons · <kbd>M / J</kbd> navigation · <kbd>F</kbd> save · <kbd>ESC</kbd> cancel/close. Browser shortcuts are not intercepted.</p><h2>Combat</h2><p>Select a weapon, then an enemy room. Auto-fire must be checked before targeting. Laser strips shields. Ion suppresses power. Missile bypasses shields but uses ammo. Beam crosses rooms but needs shields down. Kinetic fires multiple shield-stripping rounds. Experimental disrupts atmosphere after a long charge. Power allocated to Weapons supplies guns in listed order.</p><h2>Damage control</h2><p>Select crew then a room; choose a task. They physically cross unlocked doors. Repair restores systems and seals breaches. Extinguish fights fires. Medbay heals only when powered. Open a vent to suppress fire, then close it and restore oxygen. Below 20% oxygen crew suffocate. Damaged systems lose usable power; allocations are not restored for free.</p><h2>Commerce and exploration</h2><p>Locations start as unknown signatures. Powered sensors, active scans, probes, investigation and bought charts resolve them. Survey grants and one-time data sales fund preparation. Buy where produced, sell where needed; cargo mass adds up to one jump fuel and reduces evasion. Contract freight is reserved and unsellable.</p><h2>Away teams</h2><p>Board a derelict from Crew, select a room and search. Logs/components can be collected once per room. Breaches and fire are real. Repair and restore power to survive. Recall traverses back over time. Emergency tether is costly and forfeits cargo. Hostile boarding needs a tether module and enemy shields down. Eliminate defenders and control the cockpit for five seconds to capture.</p><h2>Expedition route</h2><p>Recover three coordinates through surveys, charts or physical salvage. Buy fuel reserves before Terminus. Guardian passage can be fought, spoofed with EW and code, or negotiated using credits/knowledge copies. Recover the beacon archive; return to Haven and hand it in.</p><button onClick={() => { setTutorial(true); s.tutorial = 0; open(null); api.notify(); }}>Replay introduction</button></div>}
       {panel === 'help' && <div className="operation-buttons"><button onClick={() => startDrill('emergency')}>Damage-control practice drill</button><button onClick={() => startDrill('boarding')}>Away-team recall practice drill</button><small>Drills use real simulation, check outcomes and restore your expedition unchanged. They never overwrite its save.</small></div>}
       {panel === 'help' && <p>Combat counterplay: disabling enemy Weapons limits return fire; disabling Engines denies a charged retreat. A fleeing bounty target is not a kill. Ion damage removes power allocations: when the lock expires, use available reactor power to restore them explicitly. Extinguish fire before committing injured crew to prolonged repair.</p>}
-      {(panel === 'settings' || panel === 'load') && <section><h2>Recovery diagnostics</h2><p className="muted">Recovered runs can continue saving while the original corrupt bytes remain in one bounded diagnostic slot. Export diagnostics before explicitly discarding them. Valid current/previous saves and the live run are never discarded.</p><button onClick={downloadRecovery}>Export recovery diagnostics</button><button className="danger" onClick={() => setConfirmDiscard(true)}>Discard corrupt saved bytes</button></section>}
+      {(panel === 'settings' || panel === 'load') && hasDamagedSave && <section><h2>Damaged save recovery</h2><p>A saved game could not be read. Restore a previous save or load a backup file above. Keep a recovery backup before removing unreadable saves; working saves and your current expedition will be kept.</p><button onClick={() => downloadRecovery()}>Download recovery backup</button><button className="danger" onClick={() => setConfirmDiscard(true)}>Remove unreadable saves</button></section>}
+      {(panel === 'settings' || panel === 'load') && DIAGNOSTICS_ENABLED && <section className="developer-diagnostics"><h2>Developer diagnostics</h2>{panel === 'settings' && <label><input type="checkbox" checked={diagnostics} onChange={e => setDiagnostics(e.target.checked)} /> Show graphics diagnostics / frame rate</label>}<button onClick={() => downloadRecovery(true)}>Export recovery diagnostics</button></section>}
       {panel === 'journal' && <><h2>Discovery records</h2><div className="service-grid">{s.discoveries.map(id => <article key={id}><b>{discoveryKind(s, id).toUpperCase()} SURVEY</b><p>{s.region.flatMap(r => r.locations).find(l => l.id === id)?.name ?? id}</p><small>{s.soldData.includes(id) ? 'SOLD · Knowledge retained' : `${SURVEY_VALUES[discoveryKind(s, id)]} CR exchange value`}</small></article>)}</div></>}
-      <div className="dialog-footer" role="status">{api.message || 'Interaction pause active. Close this panel to return to the prior pause state.'}</div>
+      {panel !== 'about' && <div className="dialog-footer" role="status">{api.message || 'Interaction pause active. Close this panel to return to the prior pause state.'}</div>}
     </section></div>}
     {confirm && <div className="modal-backdrop confirm-backdrop"><section className="confirm-dialog frame" role="alertdialog" aria-modal="true" aria-label="Confirm command"><h2>Confirm captain’s order</h2><p>{confirm.text}</p><button className="primary" onClick={() => { if(confirm.command.type === 'abandon' && !confirm.command.confirm) newRun(); else { const result = send(confirm.command); if(result.ok && confirm.command.type === 'travel') { open(null); api.paused = false; api.notify(); } } setConfirm(null); }}>Confirm</button><button onClick={() => setConfirm(null)}>Cancel</button></section></div>}
-    {confirmDiscard && <div className="modal-backdrop confirm-backdrop"><section className="confirm-dialog frame" role="alertdialog" aria-modal="true" aria-label="Discard corrupt saved bytes"><h2>Discard recovery evidence?</h2><p>This permanently removes corrupt primary/quarantined bytes only. Export recovery diagnostics first if you need that evidence. Valid current/previous saves and your live expedition are retained.</p><button className="danger" onClick={() => { const result = discardCorruptSaves(); api.message = result.ok ? 'Corrupt saved bytes discarded by explicit confirmation. Valid saves and live run retained.' : result.message; api.notify(); setConfirmDiscard(false); }}>Confirm discard</button><button onClick={() => setConfirmDiscard(false)}>Cancel</button></section></div>}
+    {confirmDiscard && <div className="modal-backdrop confirm-backdrop"><section className="confirm-dialog frame" role="alertdialog" aria-modal="true" aria-label="Remove unreadable saves"><h2>Remove unreadable saves?</h2><p>Keep a recovery backup first if you want to retain the damaged files. This only removes unreadable saves; working saves and your current expedition will be kept.</p><button className="danger" onClick={() => { const result = discardCorruptSaves(); api.message = result.ok ? 'Unreadable saves removed. Working saves and your current expedition were kept.' : result.message; if (result.ok) setHasDamagedSave(false); api.notify(); setConfirmDiscard(false); }}>Confirm discard</button><button onClick={() => setConfirmDiscard(false)}>Cancel</button></section></div>}
     {debrief && started && <div className="modal-backdrop"><section className="debrief frame" role="dialog" aria-modal="true" aria-label="Expedition debrief"><span className="eyebrow">EXPEDITION DEBRIEF</span><h1>{s.phase === 'victory' ? 'THE ARCHIVE IS HOME' : s.phase === 'defeat' ? 'SIGNAL LOST' : 'JOURNEY ENDED'}</h1><p>{s.phase === 'victory' ? 'Your choices carried the Wayfarer through the frontier. The Cartographer’s knowledge belongs to the living again.' : s.phase === 'defeat' ? 'The ship or crew could not be recovered. Every expedition leaves a story.' : 'The captain ordered an end to the expedition. Your discoveries remain in this run’s journal.'}</p>{summary}<button onClick={download}>Export expedition record</button><button className="primary" onClick={() => open('new')}>Plan another expedition</button></section></div>}
   </main>{transitionPhase !== 'idle' && !reducedMotion && <div className={`screen-fade fade-${transitionPhase}`} aria-hidden="true" />}</>;
 }

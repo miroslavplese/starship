@@ -204,11 +204,24 @@ to real course cards; selection alone cannot bypass the command gateway.
 `game/scenarios.ts` creates the normal run and accepts an existing mission
 through that gateway, rather than inventing parallel scenario progress.
 
-Settings owns renderer quality (`auto`, `high`, `balanced`, `performance`) and
-the initially false diagnostics switch. Scene consumes quality changes in its
-actual resolution selection. Its FPS output exists only when diagnostics are
-enabled. The ship log is a transparent, bounded, scrollable overlay below the
-expedition tile; only its own rectangle intercepts pointer input.
+Settings owns renderer quality (`auto`, `high`, `balanced`, `performance`).
+Developer tools require the build-time `VITE_STARSHIP_DIAGNOSTICS=1` flag;
+ordinary Pages builds explicitly disable it. In enabled builds the additional
+FPS checkbox starts off. Both controller performance warnings and Scene metrics
+respect the feature flag. Player damaged-save recovery remains independently
+available when needed. Scene consumes quality changes in actual resolution
+selection. Its cover-scaled scenery fills the viewport, independently of the
+contained tactical world and its unchanged hit coordinates. Feedback overlays
+the scene rather than reserving a grid row. The five toolbar buttons are 48px
+square; the transparent, bounded, scrollable log overlays scenery below the
+expedition tile, and only its own rectangle intercepts pointer input.
+Active weapon targeting takes pointer priority over the log so overlaid text
+cannot intercept enemy-room shots; the log remains keyboard-scrollable.
+
+`tools/build-info.ts` collects package version, exact revision, CI run/attempt
+when available and UTC build time. Vite defines the same typed metadata used by
+About and emits `build-info.json`; both regenerate for every build. The existing
+offline cache fingerprints this output along with the compiled application.
 
 The crew-order popup uses the selected Pixi room's local-to-global transform,
 canvas viewport rectangle and measured DOM popup dimensions. It follows layout/
@@ -216,8 +229,9 @@ resize changes and clamps to the viewport without changing room hitboxes.
 Ship Systems retains an accessible room list; returning from it focuses a room
 task control after the transition and room anchor have committed. Resizing does
 not steal task focus. The popup layers above drill notices but below dialogs.
-Escape dismisses the popup. All task buttons reuse existing
-dispatch, paused queue, authority and failure-message behavior.
+Escape dismisses the popup. All task buttons reuse existing dispatch, paused
+queue, authority and failure-message behavior. Accepted live or queued orders
+close it and focus the selected crew; rejection leaves it open with feedback.
 
 Left click selects crew, room, weapon or contact. Right click issues a move/task
 to the hovered room for selected crew; offer a visible equivalent action so

@@ -47,15 +47,18 @@ button.frame:hover:not(.selected):not(.paused) { --frame-edge: #a6e9f4; }
 .drill-banner, .stranded-banner { --frame-edge: #e1c276; }
 
 .deck-content { display: contents; }
-.command-icons { display: flex; gap: 5px; align-items: center; margin-left: auto; }
-.command-icons button { margin: 0; width: 36px; height: 40px; padding: 3px; font-size: 23px; }
-.telemetry { gap: 12px; }
-.player-readout { width: 34%; }
-.enemy-readout { width: 27%; }
-.command-feedback { align-self: center; padding: 5px 20px; }
-.event-feed { top: 8px; bottom: auto; right: 18px; width: min(27vw, 430px); max-height: 145px; overflow: auto; pointer-events: auto; padding: 8px; background: #07111b26; opacity: .8; scrollbar-width: thin; z-index: 3; }
+.command-deck { grid-template-rows: auto minmax(0, 1fr) var(--hud-height, 166px); }
+.telemetry { display: grid; grid-template-columns: minmax(280px, 1fr) 160px max-content minmax(280px, 1fr); gap: 16px; padding: 12px 18px; }
+.player-readout, .enemy-readout { width: auto; max-width: none; margin: 0; min-width: 0; }
+.ftl-readout { width: auto; }
+.command-icons { display: flex; gap: 6px; align-items: center; margin: 0; }
+.command-icons button { display: grid; place-items: center; flex: none; margin: 0; width: 48px; height: 48px; min-width: 48px; min-height: 48px; padding: 0; font-size: 24px; }
+.tactical-area { margin-top: 0; }
+.command-feedback { position: absolute; left: 18px; bottom: 6px; max-width: min(780px, calc(100% - 36px)); padding: 4px 8px; background: #07111b99; white-space: normal; pointer-events: none; z-index: 4; }
+.event-feed { top: 56px; bottom: auto; right: 24px; width: min(28%, 360px); max-height: min(200px, calc(100% - 80px)); overflow: auto; pointer-events: auto; padding: 8px; background: #07111b26; opacity: .8; scrollbar-width: thin; z-index: 3; }
 .event-feed:hover, .event-feed:focus-within { opacity: 1; background: #07111b99; }
 .event-feed > div { background: transparent; padding: 4px 7px; }
+.targeting-banner ~ .event-feed { pointer-events: none; }
 .room-inspector { position: fixed; bottom: auto; width: min(300px, calc(100vw - 16px)); max-height: calc(100dvh - 16px); overflow: auto; z-index: 12; }
 .drill-banner { z-index: 10; }
 .title-screen { position: fixed; inset: 0; z-index: 20; overflow: auto; background: #050c18; }
@@ -80,6 +83,10 @@ button.frame:hover:not(.selected):not(.paused) { --frame-edge: #a6e9f4; }
 .start-options > button { margin: 0; height: 38px; font-size: 11px; }
 .about-content { line-height: 1.8; max-width: 700px; }
 .about-content h2 { font-size: 32px; margin: 16px 0 24px; }
+.build-info { display: grid; grid-template-columns: max-content 1fr; gap: 10px 20px; margin-top: 24px; }
+.build-info dt { color: #96acb7; }
+.build-info dd { margin: 0; overflow-wrap: anywhere; }
+.developer-diagnostics { margin-top: 24px; }
 .navigation-visual { background: radial-gradient(ellipse at center, #18304880, #040b17); border: 1px solid #33586d; padding: 14px; margin-bottom: 20px; }
 .navigation-visual svg { display: block; width: 100%; min-height: 220px; }
 .navigation-visual text { font-size: 13px; font-family: inherit; fill: #c4dbe8; pointer-events: none; paint-order: stroke; stroke: #040b17; stroke-width: 3px; stroke-linejoin: round; }
@@ -102,18 +109,19 @@ button.frame:hover:not(.selected):not(.paused) { --frame-edge: #a6e9f4; }
 @keyframes screen-in { from { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .screen-fade { animation: none; } }
 @media (max-width: 1350px) {
-  .telemetry { gap: 8px; }
-  .ftl-readout { width: 140px; flex-shrink: 0; }
-  .command-icons { gap: 3px; }
-  .command-icons button { width: 30px; height: 36px; font-size: 20px; }
-  .settings-button { margin-left: 0; padding: 7px; }
-  .enemy-readout { width: 26%; }
+  .command-deck { --hud-height: 150px; }
+  .telemetry { grid-template-columns: minmax(240px, 1fr) 140px max-content minmax(240px, 1fr); gap: 10px; padding: 10px 12px; }
 }
+@media (min-width: 1900px) { .command-deck { --hud-height: 185px; } }
 @media (max-height: 760px) {
+  .command-deck { --hud-height: 145px; }
   .title-content { margin-top: 30px; }
   .title-content > p:not(.title-subtitle) { margin: 18px 0; font-size: 16px; }
   .title-content nav { margin: 18px 0; }
   .title-content nav button { padding: 12px 18px; }
+}
+@media (max-width: 1100px) {
+  .telemetry { grid-template-columns: minmax(220px, 1fr) 130px max-content minmax(220px, 1fr); gap: 8px; }
 }
 @media (max-width: 700px) {
   .scenario-grid { grid-template-columns: 1fr; }

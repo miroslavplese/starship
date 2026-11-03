@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeDialog, beginExpedition, continueExpedition, enableDiagnostics } from './journeys';
+import { closeDialog, beginExpedition, continueExpedition, setGraphicsQuality, selectPlayerRoom } from './journeys';
 
 test('first battle: damage control, repower, surrender or victory, reward and departure', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
@@ -39,6 +39,7 @@ test('first battle: damage control, repower, surrender or victory, reward and de
     if ((await pause.textContent())?.includes('PAUSE')) await pause.click();
     const accept = page.getByRole('button', { name: 'Accept terms', exact: true });
     if (await accept.count()) await accept.click();
+    await selectPlayerRoom(page, 'Weapons');
     const hazards = await page.locator('.room-inspector').textContent();
     const desiredTask = Number(hazards?.match(/FIRE (\d+)%/)?.[1] ?? 0) > 0 ? 'extinguish' : 'repair';
     if (desiredTask !== repairTask) {
@@ -70,8 +71,7 @@ test('first battle: damage control, repower, surrender or victory, reward and de
   await page.reload();
   await continueExpedition(page);
   await expect(page.locator('[title="Credits and scrap"] b')).toHaveText(credits!);
-  await enableDiagnostics(page);
-  await expect(page.getByTestId('tactical-rendered-fps')).not.toHaveAttribute('data-render-state', 'measuring');
+  await setGraphicsQuality(page, 'auto');
   await page.screenshot({ path: `test-results/${test.info().project.name}-first-battle-complete.png` });
   expect(errors).toEqual([]);
 });

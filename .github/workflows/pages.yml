@@ -32,6 +32,7 @@ jobs:
       - run: npm run build
         env:
           STARSHIP_BASE_PATH: ${{ steps.pages.outputs.base_path }}/
+          VITE_STARSHIP_DIAGNOSTICS: '0'
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

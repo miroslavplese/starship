@@ -1,16 +1,16 @@
 import { expect, test } from '@playwright/test';
-import { beginExpedition, enableDiagnostics, returnFromDrill } from './journeys';
+import { beginExpedition, setGraphicsQuality, returnFromDrill } from './journeys';
 
 test('finished combat, targeting and physical-hazard visual states at full resolution', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
   await beginExpedition(page);
   await page.getByRole('button', { name: 'Skip introduction' }).click();
-  await enableDiagnostics(page, 'high');
+  await setGraphicsQuality(page, 'high');
   await page.getByRole('button', { name: /NAVIGATION/ }).click();
   await page.locator('.contact-card').last().getByRole('button', { name: 'SET COURSE' }).click();
   await expect(page.locator('.enemy-readout')).toContainText('CONTACT HULL', { timeout: 60000 });
-  await expect(page.getByTestId('tactical-rendered-fps')).not.toHaveAttribute('data-render-state', 'measuring');
+  await expect(page.locator('.tactical-scene')).toHaveAttribute('data-renderer-ready', 'true');
   await page.waitForTimeout(1000);
   await page.screenshot({ path: `test-results/${test.info().project.name}-pristine-combat.png` });
   await page.keyboard.press('q');

@@ -155,6 +155,18 @@ function decodeError(text: string): string | null {
   catch (e) { return e instanceof Error ? e.message : String(e); }
 }
 
+export function saveAvailability(storage: Storage = localStorage) {
+  const primary = storage.getItem(SAVE_KEY);
+  const previous = storage.getItem(PREVIOUS_KEY);
+  const primaryError = primary === null ? null : decodeError(primary);
+  const previousError = previous === null ? null : decodeError(previous);
+  return {
+    canContinue: primary !== null && primaryError === null,
+    damaged: primaryError !== null || previousError !== null || storage.getItem(CORRUPT_KEY) !== null,
+    error: primaryError ?? previousError,
+  };
+}
+
 export function recoveryDiagnostics(storage: Storage = localStorage): string {
   const primary = storage.getItem(SAVE_KEY), previous = storage.getItem(PREVIOUS_KEY), quarantined = storage.getItem(CORRUPT_KEY);
   return JSON.stringify({
@@ -166,13 +178,15 @@ export function recoveryDiagnostics(storage: Storage = localStorage): string {
 
 export function discardCorruptSaves(storage: Storage = localStorage): Result {
   try {
-    const primary = storage.getItem(SAVE_KEY);
+    const primary = storage.getItem(SAVE_KEY), previous = storage.getItem(PREVIOUS_KEY);
     const corruptPrimary = primary !== null && decodeError(primary) !== null;
+    const corruptPrevious = previous !== null && decodeError(previous) !== null;
     if (corruptPrimary) storage.removeItem(SAVE_KEY);
+    if (corruptPrevious) storage.removeItem(PREVIOUS_KEY);
     storage.removeItem(CORRUPT_KEY);
-    if ((corruptPrimary && storage.getItem(SAVE_KEY) !== null) || storage.getItem(CORRUPT_KEY) !== null) throw new Error('Corrupt saved bytes could not be removed.');
+    if ((corruptPrimary && storage.getItem(SAVE_KEY) !== null) || (corruptPrevious && storage.getItem(PREVIOUS_KEY) !== null) || storage.getItem(CORRUPT_KEY) !== null) throw new Error('Unreadable saves could not be removed.');
     return { ok: true };
-  } catch (e) { return { ok: false, message: `Diagnostic discard failed: ${e instanceof Error ? e.message : String(e)}. Export recovery diagnostics before retrying.` }; }
+  } catch (e) { return { ok: false, message: `Removing unreadable saves failed: ${e instanceof Error ? e.message : String(e)}. Download a recovery backup before retrying.` }; }
 }
 
 export function save(s: GameState, storage: Storage = localStorage): SaveResult {
@@ -182,11 +196,11 @@ export function save(s: GameState, storage: Storage = localStorage): SaveResult 
     if (prior !== null) {
       if (decodeError(prior) === null) storage.setItem(PREVIOUS_KEY, prior);
       else {
-        if (prior.length > 1048576) throw new Error('Corrupt primary exceeds the 1 MiB diagnostic limit. Export recovery diagnostics and confirm discard before saving.');
+        if (prior.length > 1048576) throw new Error('The damaged save exceeds the 1 MiB recovery-backup limit. Download a recovery backup and remove unreadable saves before saving.');
         const retained = storage.getItem(CORRUPT_KEY);
-        if (retained !== null && retained !== prior) throw new Error('A different corrupt save is already retained. Export recovery diagnostics and confirm discard before saving.');
+        if (retained !== null && retained !== prior) throw new Error('A different damaged save is already kept. Download a recovery backup and remove unreadable saves before saving.');
         storage.setItem(CORRUPT_KEY, prior);
-        if (storage.getItem(CORRUPT_KEY) !== prior) throw new Error('Corrupt-save diagnostic read-back failed; primary retained.');
+        if (storage.getItem(CORRUPT_KEY) !== prior) throw new Error('Recovery backup could not be verified; unreadable saved game kept.');
         quarantined = true;
       }
     }
@@ -195,5 +209,5 @@ export function save(s: GameState, storage: Storage = localStorage): SaveResult 
     if (readback !== bytes) throw new Error('Save read-back failed; previous slot retained.');
     decode(readback);
     return quarantined ? { ok: true, quarantined: true } : { ok: true };
-  } catch (e) { return { ok: false, message: `Save failed: ${e instanceof Error ? e.message : String(e)}. Export your run or recover the previous slot.` }; }
+  } catch (e) { return { ok: false, message: `Save failed: ${e instanceof Error ? e.message : String(e)}. Download your save file or restore the previous save.` }; }
 }

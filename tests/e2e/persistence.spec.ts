@@ -27,7 +27,7 @@ async function downloadText(page: Page, name: string) {
   return readFile(path, 'utf8');
 }
 
-const exportRun = (page: Page) => downloadText(page, 'Export JSON');
+const exportRun = (page: Page) => downloadText(page, 'Download save file');
 
 function envelope(payload: string) {
   let hash = 2166136261;
@@ -89,26 +89,26 @@ test('a corrupt primary remains available for diagnostics while the previous run
   const bytes = await startAndSave(page);
   await page.getByRole('button', { name: /Save expedition/ }).click();
   await page.evaluate(key => localStorage.setItem(key, '{corrupt-primary'), currentKey);
-  await page.getByRole('button', { name: 'Load current slot', exact: true }).click();
+  await page.getByRole('button', { name: 'Load saved game', exact: true }).click();
   await expect(feedback(page)).toContainText('Load failed:');
   expect(await exportRun(page)).toBe(bytes);
-  await page.getByRole('button', { name: 'Recover previous slot', exact: true }).click();
+  await page.getByRole('button', { name: 'Restore previous save', exact: true }).click();
   await expect(feedback(page)).toContainText('Expedition loaded paused');
   expect(await exportRun(page)).toBe(bytes);
   expect(await page.evaluate(keys => keys.map(key => localStorage.getItem(key)), [currentKey, previousKey])).toEqual(['{corrupt-primary', bytes]);
   await page.getByRole('button', { name: /Save expedition/ }).click();
   await expect(feedback(page)).toContainText('saved and verified');
-  await expect(feedback(page)).toContainText(/diagnostic/i);
+  await expect(feedback(page)).toContainText('unreadable backup was kept');
   expect(await page.evaluate(keys => keys.map(key => localStorage.getItem(key)), [currentKey, previousKey, 'starship.corrupt.v1'])).toEqual([bytes, bytes, '{corrupt-primary']);
-  const diagnostics = JSON.parse(await downloadText(page, 'Export recovery diagnostics'));
+  const diagnostics = JSON.parse(await downloadText(page, 'Download recovery backup'));
   expect(diagnostics).toMatchObject({ primary: bytes, previous: bytes, quarantined: '{corrupt-primary' });
   const slots = [currentKey, previousKey, 'starship.corrupt.v1'];
-  await page.getByRole('button', { name: 'Discard corrupt saved bytes', exact: true }).click();
-  const confirmation = page.getByRole('alertdialog', { name: 'Discard corrupt saved bytes', exact: true });
+  await page.getByRole('button', { name: 'Remove unreadable saves', exact: true }).click();
+  const confirmation = page.getByRole('alertdialog', { name: 'Remove unreadable saves', exact: true });
   await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(confirmation).not.toBeVisible();
   expect(await page.evaluate(keys => keys.map(key => localStorage.getItem(key)), slots)).toEqual([bytes, bytes, '{corrupt-primary']);
-  await page.getByRole('button', { name: 'Discard corrupt saved bytes', exact: true }).click();
+  await page.getByRole('button', { name: 'Remove unreadable saves', exact: true }).click();
   await confirmation.getByRole('button', { name: 'Confirm discard', exact: true }).click();
   await expect(confirmation).not.toBeVisible();
   expect(await page.evaluate(keys => keys.map(key => localStorage.getItem(key)), slots)).toEqual([bytes, bytes, null]);

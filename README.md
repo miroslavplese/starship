@@ -65,11 +65,16 @@ left of Settings. Navigation shows actual known interstellar routes and a local
 orbital schematic; selecting a node highlights its course card, where existing
 travel costs and gates apply. Select crew then a room for an anchored order popup,
 or use the keyboard-accessible room list in Ship Systems. The transparent,
-scrollable ship log sits below the expedition/contact tile.
+scrollable ship log overlays the scene below the expedition/contact tile without
+reserving header or scene space. All five top action buttons have 48px hit targets.
+Accepted crew orders close the popup and return focus to the selected crew;
+rejected orders leave it open with visible feedback.
 
 Graphics quality is selectable in Settings. Auto detects the adapter;
-the rendered-FPS diagnostic is hidden by default and enabled only in Settings.
-It counts actual scene submissions and settles to zero when paused. Screen
+developer tools are absent from ordinary builds. Only an explicit
+`VITE_STARSHIP_DIAGNOSTICS=1` build offers the diagnostics section in Settings,
+including an initially off rendered-FPS checkbox. Pages explicitly disables the
+flag. FPS counts actual scene submissions and settles to zero when paused. Screen
 changes fade out and in, block input during transition and respect reduced motion.
 Headful Iris Xe meets the previously measured performance target;
 headless software rendering currently does not.
@@ -89,7 +94,8 @@ It uses the player's safe-speed control, not hidden state or fixture saves.
 previous-slot recovery, quota failures and failed read-back without losing the
 live expedition or claiming a successful save. Corrupt originals are preserved
 in a bounded diagnostic slot so recovery can continue saving. Settings exposes
-diagnostic export and explicitly confirmed discard without deleting good saves.
+plain-language recovery backup download and explicitly confirmed unreadable-save
+removal only when damaged bytes exist, without deleting working saves.
 The persistence journey also checks pause/visibility overlap and queued orders
 across reload. `tests/e2e/endings.spec.ts` uses bounded lethal-impact and
 oxygen-loss fixtures to verify actual defeat, terminal autosave and reload.
@@ -99,6 +105,15 @@ traversal, log recovery and normal recall through the production controls.
 `tests/e2e/interface.spec.ts` covers pre-run menus/credits/settings, save-safe
 setup, selected-mission completion and reload, both visual map levels,
 settings-driven rendering, viewport-clamped room orders, modal focus and fades.
+`tests/e2e/corrections.spec.ts` measures equal toolbar dimensions and scene/footer/
+log rectangles at 1280x720, 1440x1080 and 2263x1462, samples the actual rendered
+scenery in both former letterbox bands, and checks canvas room targeting,
+accepted/rejected orders, player copy and build metadata.
+About displays the package version, automatic timestamped build identifier,
+revision and UTC build time. Vite emits matching `build-info.json`; every build
+regenerates it, and CI includes its run number/attempt. A two-production-build
+test checks changed metadata and compiled About values, without a manual release
+metadata update.
 `tests/sim/scenarios.test.ts` checks distinct generated objectives and full-state
 save continuation without changing the existing campaign.
 For parallel worktrees, set `STARSHIP_TEST_PORT` to an unused preview port.
@@ -125,6 +140,11 @@ durations are targets, not measured claims.
 Opt-in diagnostics are separate from the normal browser suite:
 
 ```powershell
+$env:VITE_STARSHIP_DIAGNOSTICS='1'
+npm run build
+$env:EXPECT_DIAGNOSTICS='1'
+node .\node_modules\@playwright\test\cli.js test --grep 'developer feature flag'
+Remove-Item Env:EXPECT_DIAGNOSTICS
 $env:PERFORMANCE='1'
 $env:GRAPHICS_QUALITY='auto'
 $env:PERFORMANCE_FIXTURE='baseline'
@@ -133,6 +153,8 @@ Remove-Item Env:PERFORMANCE,Env:GRAPHICS_QUALITY,Env:PERFORMANCE_FIXTURE
 $env:SOAK='1'
 node .\node_modules\@playwright\test\cli.js test --project=chromium --grep '25 production'
 Remove-Item Env:SOAK
+Remove-Item Env:VITE_STARSHIP_DIAGNOSTICS
+npm run build
 ```
 
 Verify the reported WebGL adapter rather than assuming headful hardware.

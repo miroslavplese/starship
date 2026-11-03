@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeDialog, beginExpedition, continueExpedition, enableDiagnostics } from './journeys';
+import { closeDialog, beginExpedition, continueExpedition, setGraphicsQuality } from './journeys';
 test('production controls: onboarding, queued orders, commerce, survey and persistence', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
@@ -45,8 +45,7 @@ test('production controls: onboarding, queued orders, commerce, survey and persi
   await page.getByRole('button', { name: /JOURNAL/ }).click();
   await expect(page.getByRole('dialog')).toContainText('1 discoveries');
   await closeDialog(page);
-  await enableDiagnostics(page);
-  await expect(page.getByTestId('tactical-rendered-fps')).not.toHaveAttribute('data-render-state', 'measuring');
+  await setGraphicsQuality(page, 'auto');
   await page.screenshot({ path: `test-results/${test.info().project.name}-sandbox.png`, fullPage: true });
   expect(errors).toEqual([]);
 });

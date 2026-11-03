@@ -41,11 +41,12 @@ test('clipped frame edges stay connected across panels, selection, confirmations
   await page.screenshot({ path: testInfo.outputPath('briefing-corners.png') });
 
   await closeDialog(page);
+  await page.evaluate(() => localStorage.setItem('starship.save.v1', '{broken'));
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   const settings = page.getByRole('dialog', { name: 'settings', exact: true });
   expect(await settings.evaluate(element => getComputedStyle(element).clipPath)).toBe('none');
-  await page.getByRole('button', { name: 'Discard corrupt saved bytes', exact: true }).click();
-  const confirmation = page.getByRole('alertdialog', { name: 'Discard corrupt saved bytes', exact: true });
+  await page.getByRole('button', { name: 'Remove unreadable saves', exact: true }).click();
+  const confirmation = page.getByRole('alertdialog', { name: 'Remove unreadable saves', exact: true });
   await expectCornerEdges(page, confirmation);
   await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
   await closeDialog(page);
