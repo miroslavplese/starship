@@ -1,5 +1,27 @@
-import { expect, test } from '@playwright/test';
-import { closeDialog, dismissScreen, beginExpedition, continueExpedition, setGraphicsQuality, savedLibraryBytes } from './journeys';
+import { writeFile } from 'node:fs/promises';
+import { expect, test, type Page } from '@playwright/test';
+import { closeDialog, dismissScreen, beginExpedition, continueExpedition, setGraphicsQuality, savedLibraryBytes, savedSnapshots } from './journeys';
+
+async function observeTransitions(page: Page) {
+  return page.evaluateHandle(() => {
+    const samples: { fade: string | null; opacity: number; width: number; height: number; deckOpacity: number; sceneOpacity: number }[] = [];
+    let frame = 0;
+    const sample = () => {
+      const fade = document.querySelector<HTMLElement>('.screen-fade'), box = fade?.getBoundingClientRect();
+      samples.push({
+        fade: fade?.className ?? null, opacity: fade ? Number(getComputedStyle(fade).opacity) : 0,
+        width: box?.width ?? 0, height: box?.height ?? 0,
+        deckOpacity: Number(getComputedStyle(document.querySelector('main')!).opacity),
+        sceneOpacity: Number(getComputedStyle(document.querySelector('.tactical-scene')!).opacity),
+      });
+    };
+    const tick = () => { sample(); frame = requestAnimationFrame(tick); };
+    const observer = new MutationObserver(sample);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    tick();
+    return { stop() { sample(); observer.disconnect(); cancelAnimationFrame(frame); return samples; } };
+  });
+}
 
 test('cinematic menu, pre-run settings and credits never write a save', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
@@ -56,10 +78,12 @@ test('two-level navigation, render settings and anchored queued crew orders', as
   expect(navBox.x).toBeLessThan((await settings.boundingBox())!.x);
   await page.getByRole('button', { name: 'NAVIGATION', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Orbital system map' })).toBeVisible();
+  await expect(page.locator('.navigation-visual')).not.toContainText('Schematic, not physical scale.');
   await page.getByRole('button', { name: 'Inspect Helios I', exact: true }).click();
   await expect(page.locator('#course-s0-planet0')).toHaveClass(/selected/);
   await page.screenshot({ path: info.outputPath('orbital-map.png') });
   await page.getByRole('button', { name: 'STELLAR REGION', exact: true }).click();
+  await expect(page.locator('.navigation-visual')).not.toContainText('Schematic, not physical scale.');
   await expect(page.locator('.navigation-visual line.available')).toHaveCount(2);
   await page.getByRole('button', { name: 'Inspect Cinder', exact: true }).press('Enter');
   await expect(page.locator('#course-s1')).toHaveClass(/selected/);
@@ -89,12 +113,12 @@ test('two-level navigation, render settings and anchored queued crew orders', as
   await expect(page.locator('.crew-card.selected')).toBeFocused();
 });
 
-test('exit and entry fades block duplicate activation and restore modal focus', async ({ page }) => {
+test('menu overlays restore modal focus without a scene transition', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/');
-  await page.getByRole('button', { name: 'New Game', exact: true }).dblclick();
-  await expect(page.locator('.screen-fade')).toBeVisible();
-  await expect(page.locator('main')).toHaveAttribute('inert', '');
+  await page.getByRole('button', { name: 'New Game', exact: true }).click();
+  await expect(page.locator('.screen-fade')).toHaveCount(0);
+  await expect(page.locator('main')).not.toHaveAttribute('inert', '');
   await expect(page.getByRole('dialog', { name: 'Mission selection', exact: true })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(1);
   await expect(page.locator('.screen-fade')).toHaveCount(0);
@@ -103,6 +127,82 @@ test('exit and entry fades block duplicate activation and restore modal focus', 
   await expect(page.getByRole('button', { name: 'Close dialog' })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Main menu', exact: true })).toBeVisible();
+});
+
+test('opening, switching and closing overlays never fades the viewport or changes captain pause', async ({ page }, info) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/'); await beginExpedition(page);
+  await page.getByRole('button', { name: 'Skip introduction', exact: true }).click();
+  const capture = await observeTransitions(page);
+  for (const name of ['NAVIGATION', 'DOCK / STATION', 'FIELD MANUAL', 'CREW', 'SHIP', 'JOURNAL 0/3', 'Settings']) {
+    await page.getByRole('button', { name, exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Close dialog', exact: true })).toBeFocused();
+    await expect(page.locator('.deck-content')).toHaveAttribute('inert', '');
+    await closeDialog(page);
+    await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
+  }
+  await page.keyboard.press('m');
+  await page.getByRole('button', { name: 'Active scan', exact: true }).click();
+  await page.getByRole('button', { name: 'Launch probe · 5 CR', exact: true }).click();
+  const rejection = await page.locator('.dialog-footer').innerText();
+  await page.screenshot({ path: info.outputPath('navigation-single-close.png') });
+  const duplicate = await page.getByRole('button', { name: 'Return to live simulation', exact: true }).count();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Saved expeditions', exact: true }).click();
+  await closeDialog(page);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'New expedition', exact: true }).click();
+  await closeDialog(page);
+  await page.getByRole('button', { name: /RESUME/ }).click();
+  await page.getByRole('button', { name: 'NAVIGATION', exact: true }).click();
+  const scan = await page.locator('.operation-banner').innerText();
+  await page.waitForTimeout(300);
+  expect(await page.locator('.operation-banner').innerText()).toBe(scan);
+  await closeDialog(page);
+  await expect(page.locator('.pause-stack .pause-button')).not.toHaveClass(/paused/);
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'Abandon expedition', exact: true }).click();
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Expedition debrief', exact: true })).toBeVisible();
+  const samples = await capture.evaluate(observer => observer.stop()); await capture.dispose();
+  await writeFile(info.outputPath('overlay-opacity-samples.json'), JSON.stringify(samples));
+  expect(samples.length).toBeGreaterThan(5);
+  expect(samples.filter(sample => sample.fade !== null).length, 'Full-screen fade samples while using overlays').toBe(0);
+  expect(samples.every(sample => sample.deckOpacity === 1 && sample.sceneOpacity === 1)).toBe(true);
+  expect(duplicate).toBe(0);
+  expect(rejection).toContain('operation is already in progress');
+});
+
+test('real scene changes retain full-viewport exit and entry opacity while reduced motion omits fades', async ({ page }, info) => {
+  for (const reducedMotion of ['no-preference', 'reduce'] as const) {
+    await page.emulateMedia({ reducedMotion });
+    await page.goto('/');
+    await page.getByRole('button', { name: 'New Game', exact: true }).click();
+    const savedCount = (await savedSnapshots(page)).length;
+    const capture = await observeTransitions(page);
+    await page.getByRole('button', { name: 'Begin Expedition', exact: true }).dblclick();
+    await page.getByRole('button', { name: 'Skip introduction', exact: true }).click();
+    expect(await savedSnapshots(page)).toHaveLength(savedCount + 1);
+    await page.getByRole('button', { name: 'Settings', exact: true }).click();
+    await page.getByRole('button', { name: 'Return to main menu', exact: true }).click();
+    await expect(page.locator('main')).not.toHaveAttribute('inert', '');
+    await continueExpedition(page);
+    const samples = await capture.evaluate(observer => observer.stop()); await capture.dispose();
+    await writeFile(info.outputPath(`scene-opacity-${reducedMotion}.json`), JSON.stringify(samples));
+    const fades = samples.filter(sample => sample.fade !== null), viewport = page.viewportSize()!;
+    if (reducedMotion === 'reduce') expect(fades).toEqual([]);
+    else {
+      expect(fades.some(sample => sample.fade!.includes('fade-out'))).toBe(true);
+      expect(fades.some(sample => sample.fade!.includes('fade-in'))).toBe(true);
+      expect(Math.max(...fades.map(sample => sample.opacity))).toBeGreaterThanOrEqual(.95);
+      expect(fades.some(sample => sample.opacity > .05 && sample.opacity < .95)).toBe(true);
+      expect(fades.every(sample => sample.width === viewport.width && sample.height === viewport.height)).toBe(true);
+    }
+    await expect(page.getByRole('button', { name: /RESUME/ })).toBeVisible();
+  }
 });
 
 test('selected survey mission can be completed through real travel and field operations', async ({ page }) => {

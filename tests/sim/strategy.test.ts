@@ -13,6 +13,25 @@ function fuel(s: GameState) { while (s.ships[0].fuel < s.ships[0].maxFuel) issue
 function jump(s: GameState, destination: string) { run(s, 600); issue(s, { type: 'travel', destination, system: true, confirm: true }); run(s, 100); }
 
 describe('strategic rules', () => {
+  it.each(['scan', 'probe'] as const)('reports an existing %s operation without changing its duration or charging for another probe', action => {
+    const s = createGame(12345);
+    issue(s, { type: 'action', action });
+    const before = JSON.stringify(s);
+    for (const next of ['scan', 'probe'] as const) {
+      expect(command(s, { type: 'action', action: next })).toEqual({ ok: false, message: 'An operation is already in progress. Finish it before starting another.' });
+      expect(JSON.stringify(s)).toBe(before);
+    }
+  });
+  it.each(['travel', 'combat'] as const)('keeps the existing %s rejection for scan and probe', reason => {
+    const s = createGame(12345);
+    if (reason === 'travel') issue(s, { type: 'travel', destination: 's0-planet0', system: false });
+    else s.encounter = 'hostile';
+    const before = JSON.stringify(s);
+    for (const action of ['scan', 'probe'] as const) {
+      expect(command(s, { type: 'action', action })).toEqual({ ok: false, message: 'Cannot start this operation during travel or combat.' });
+      expect(JSON.stringify(s)).toBe(before);
+    }
+  });
   it.each(['missing stock', 'unknown stock', 'missing observed price', 'unknown price'])('rejects imported market %s before stock regeneration can corrupt the run', kind => {
     const s = createGame(12345), market = s.markets[0];
     if (kind === 'missing stock') delete market.stock.food;

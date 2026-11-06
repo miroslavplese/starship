@@ -38,6 +38,6 @@ export default function NavigationMap({ state, regional, selected, onSelect }: {
         {point.current && <text x={point.x} y={point.y + (!regional && point.y > 175 ? 44 : 34)} textAnchor="middle" className="map-here">YOU ARE HERE</text>}
       </g>)}
     </svg>
-    <p className="muted">Schematic, not physical scale. Select a contact to inspect its course below. {regional ? 'Lines show actual known jump routes; only direct routes can be plotted.' : 'Unresolved contacts remain unidentified until scanned.'}</p>
+    <p className="muted">Select a contact to inspect its course below. {regional ? 'Lines show actual known jump routes; only direct routes can be plotted.' : 'Unresolved contacts remain unidentified until scanned.'}</p>
   </section>;
 }

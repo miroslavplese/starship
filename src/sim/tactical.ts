@@ -1,6 +1,6 @@
 import { WEAPONS } from '../content/weapons';
 import { GOODS } from '../content/region';
-import { currentSystem, event, income, player, random } from './core';
+import { currentSystem, event, hasInterceptWork, income, interceptTarget, player, random } from './core';
 import type { Bearing, Command, Crew, GameState, Projectile, Result, Room, Ship, System, SystemKind, Task } from './types';
 
 const ok: Result = { ok: true };
@@ -107,12 +107,14 @@ function ewOrder(state: GameState, actor: Ship, command: Extract<Command, { type
   if (command.mode === 'hijack' && !actor.modules.includes('drones') && actor.modules.length >= 6) return reject('A free module slot is required for the hijacked drone controller.');
   if (command.mode !== 'hijack' && command.mode !== 'intercept' && !victim) return reject('The contact lacks that system.');
   if (command.mode === 'intercept' && (!powered(actor, 'sensors') || actor.doctrine !== 'player')) return reject('Interception requires powered sensors.');
-  if (command.mode === 'intercept' && !currentSystem(state).locations.some(location => location.known < 3)) return reject('No hidden transmissions remain in this system.');
+  if (command.mode === 'intercept' && !hasInterceptWork(state)) return reject('No new contact or transmission data remains in this system.');
 
   if (command.mode === 'intercept') {
-    const location = [...currentSystem(state).locations].sort((a, b) => a.id < b.id ? -1 : 1).find(candidate => candidate.known < 3)!;
-    location.known = Math.min(3, location.known + 1);
-    if (!state.discoveries.includes(`intercept:${location.id}`)) state.discoveries.push(`intercept:${location.id}`);
+    const location = interceptTarget(state);
+    if (location) {
+      if (location.known < 2) location.known++;
+      if (!state.discoveries.includes(`intercept:${location.id}`)) state.discoveries.push(`intercept:${location.id}`);
+    }
   } else if (command.mode === 'hijack') {
     target!.modules = target!.modules.filter(module => module !== 'drones');
     if (!actor.modules.includes('drones')) actor.modules.push('drones');

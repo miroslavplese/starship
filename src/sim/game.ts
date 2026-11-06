@@ -1,7 +1,7 @@
 import type { Command, GameState, Result } from './types';
 import { createCrew, createShip } from '../content/ships';
 import { cargoMass, cargoUsed, fittingReason, generateRegion, GOODS, price, tradeQuote, UPGRADES } from '../content/region';
-import { currentLocation, currentSystem, event, income, player, random } from './core';
+import { currentLocation, currentSystem, event, hasSensorWork, income, player, random } from './core';
 import { path, tacticalCommand, tacticalTick } from './tactical';
 import { validateContent } from '../content/validate';
 import { convoyShips, missionArrival, missionCommand, missionCustoms, missionIntercept, missionSearch, missionSurvey, missionTick } from './missions';
@@ -88,9 +88,11 @@ function applyCommand(s: GameState, c: Command): Result {
     event(s, 'travel', 'Course laid in. Travel can be paused; hazards interrupt safe fast-forward.'); return success;
   }
   if (c.type === 'action') {
-    if (s.action || s.travel || s.encounter === 'hostile') return reject('Cannot start this operation during travel or combat.');
+    if (s.action) return reject('An operation is already in progress. Finish it before starting another.');
+    if (s.travel || s.encounter === 'hostile') return reject('Cannot start this operation during travel or combat.');
     const sensor = p.systems.find(x => x.kind === 'sensors');
     if (!sensor || sensor.health <= 0 || sensor.power < 1) return reject('Power and repair sensors first.');
+    if ((c.action === 'scan' || c.action === 'probe') && !hasSensorWork(s)) return reject('All contacts are identified and routes charted. No new scan data remains in this system.');
     if (c.action === 'probe' && p.credits < 5) return reject('A probe costs 5 credits.');
     if (c.action === 'mine' && (!p.modules.includes('mining') || loc.kind !== 'belt' || loc.deposit <= 0)) return reject('Requires a prospector drill and a detected unexhausted mineral belt.');
     if (c.action === 'mine' && cargoUsed(s) >= p.capacity) return reject('Cargo hold full.');
@@ -328,7 +330,7 @@ export function step(s: GameState) {
     if (t.system) { s.systemId = t.destination; const arrived = currentSystem(s); s.locationId = arrived.locations.find(l => l.kind === 'station')?.id ?? arrived.locations[0].id; arrived.known = true; }
     else s.locationId = t.destination;
     const loc = currentLocation(s);
-    loc.known = 3; observe(s); event(s, 'arrival', `Arrived: ${loc.name}.`);
+    loc.known = Math.max(2, loc.known); observe(s); event(s, 'arrival', `Arrived: ${loc.name}.`);
     if (loc.kind === 'pirate' && !loc.depleted) startEnemy(s);
     if (loc.kind === 'derelict' && !loc.depleted) {
       const derelict = s.wrecks?.[loc.id] ?? createShip('derelict', false, true);
@@ -352,14 +354,14 @@ export function step(s: GameState) {
     const action = s.action.kind; s.action = null;
     const loc = currentLocation(s), system = currentSystem(s);
     if (action === 'scan' || action === 'probe') {
-      system.locations.forEach(l => { l.known = Math.min(3, l.known + (action === 'probe' ? 2 : 1)); });
+      system.locations.forEach(l => { if (l.known < 2) l.known = Math.min(2, l.known + (action === 'probe' ? 2 : 1)); });
       system.routes.forEach(id => { const r = s.region.find(r => r.id === id); if (r) r.known = true; });
       if (!s.discoveries.includes(`route:${system.id}`)) s.discoveries.push(`route:${system.id}`);
       event(s, 'scan', 'Signals resolved and neighboring routes charted. Investigate locations for unique survey data.');
     } else if (action === 'mine') {
       if (cargoUsed(s) < p.capacity && loc.deposit > 0) { loc.deposit--; p.cargo.ore = (p.cargo.ore ?? 0) + 1; event(s, 'salvage', 'Extracted one titanium ore. Deposit depleted by one unit.'); }
     } else if (!loc.surveyed) {
-      loc.surveyed = true; loc.known = 3; s.discoveries.push(loc.id);
+      loc.surveyed = true; loc.known = Math.max(2, loc.known); s.discoveries.push(loc.id);
       const science = s.crew.filter(c => c.home === 'player' && c.health > 0).reduce((n, c) => Math.max(n, c.skills.science), 0);
       income(s, 15 + Math.min(10, science) + (p.modules.includes('sensors') ? 5 : 0)); if (loc.archive) coordinate(s, system.id);
       event(s, 'discovery', `${loc.name} surveyed. Field grant received; unique survey data can be sold once.`);

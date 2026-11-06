@@ -65,6 +65,9 @@ Load Game lists each expedition with a single **Load** action, mission,
 location, seed, progress and known saved/import time. Save and live export belong
 in Settings, not Load Game. Each expedition has its own current and previous
 checkpoint; manual saves, autosaves and endings stay with the selected expedition.
+Returning to the main menu saves and verifies current progress before leaving
+the deck, including progress since the last autosave. If that save fails,
+Settings stays open with the live run and its download/separate-copy options.
 Imports create independent expeditions, even for an identical seed/save file.
 Legacy current, previous and quarantined bytes are never removed or overwritten:
 read-only browsing exposes readable snapshots; the first load/write makes
@@ -87,6 +90,16 @@ scrollable ship log overlays the scene below the expedition/contact tile without
 reserving header or scene space. All five top action buttons have 48px hit targets.
 Accepted crew orders close the popup and return focus to the selected crew;
 rejected orders leave it open with visible feedback.
+Dialogs open, switch and close without a full-screen fade, preserving the prior
+pause state. Full-screen fades are reserved for entering/replacing an expedition
+or returning to the main menu; reduced motion omits them.
+Contacts are hidden until detected, then appear as unknown signatures until
+identified by name and type. There is no additional identification tier.
+Scans/probes are unavailable once contact identification, neighboring routes and
+the system's one-time route record are complete. Interception separately keeps
+unearned transmission records, codes and investigation evidence available.
+Legacy identification value 3 remains accepted as identified without migrating
+or downgrading saved data; existing discoveries and sales remain intact.
 
 Wayfarer's compartment display follows its original hull: engines and reactor
 are aft beside the left exhaust, with cockpit and sensors toward the right bow,

@@ -7,6 +7,7 @@ import { encode } from '../game/persistence';
 import { exportSaveBackup, importSaveBackup, readSaveLibrary, type SaveLibrary } from '../game/saves';
 import { DIAGNOSTICS_ENABLED } from '../game/features';
 import { jumpCost } from '../sim/game';
+import { hasInterceptWork, hasSensorWork } from '../sim/core';
 import { createScenario, SCENARIOS, type Scenario } from '../game/scenarios';
 import { cargoMass, cargoUsed, fittingReason, GOODS, tradeQuote, UPGRADES } from '../content/region';
 import { discoveryKind, MISSION_BRIEFINGS, SURVEY_VALUES } from '../content/expedition';
@@ -71,7 +72,7 @@ export default function App() {
   const send = (c: Command) => { audio.current.start(); return api.dispatch(c); };
   const open = (next: Panel) => {
     api.modal = true; api.accumulator = 0;
-    transition(() => { setPanel(next); if (next === 'new') setDebrief(false); });
+    transition(() => { setPanel(next); if (next === 'new') setDebrief(false); }, { fade: false });
   };
   const roomClick = (ship: string, room: string) => {
     setSelectedRoom({ ship, room });
@@ -98,7 +99,7 @@ export default function App() {
   useEffect(() => {
     if (!started || s.phase === 'expedition') { setDebrief(false); return; }
     if (!debrief && panel !== 'new' && transitionPhase === 'idle' && !confirm) {
-      transition(() => { setPanel(null); setDebrief(true); });
+      transition(() => { setPanel(null); setDebrief(true); }, { fade: false });
     }
   }, [started, s.phase, debrief, panel, transitionPhase, confirm]);
   useEffect(() => {
@@ -258,14 +259,17 @@ export default function App() {
   };
   const startDrill = (kind: 'emergency' | 'boarding') => {
     if(api.training) return;
-    trainingBackup.current = structuredClone(s); api.training = true; setDrill(kind); setTutorial(false);
-    api.replace(createDrill(kind)); setSelectedCrew(api.state.crew[1].id); setSelectedRoom(null); open(null);
+    transition(() => {
+      trainingBackup.current = structuredClone(s); api.training = true; setDrill(kind); setTutorial(false);
+      api.replace(createDrill(kind)); setSelectedCrew(api.state.crew[1].id); setSelectedRoom(null); setPanel(null);
+    });
   };
-  const endDrill = () => {
+  const endDrill = () => transition(() => {
     if(trainingBackup.current) api.replace(trainingBackup.current);
     trainingBackup.current = null; api.training = false; setDrill(null); setSelectedCrew(null); setSelectedRoom(null);
-  };
+  });
   const canFast = s.encounter !== 'hostile' && !s.customs;
+  const sensorWork = hasSensorWork(s), interceptWork = hasInterceptWork(s);
   const summary = <><p>Seed <b>{s.seed}</b> · Active simulation {(s.tick / 1200).toFixed(1)} min · Archives {s.coordinates.length}/3</p><p>{s.crew.filter(c => c.home === 'player' && c.health > 0).length} crew survived · {s.discoveries.length} discoveries · {s.contracts.filter(c => c.status === 'complete').length} contracts completed</p><p>Credits {p.credits} · Debt {p.debt} · Net wealth {p.credits - p.debt}</p><p>{Object.entries(s.reputation).map(([name, value]) => `${name} ${value > 0 ? '+' : ''}${value}`).join(' / ')}</p></>;
   const contractCards = <div className="service-grid">{s.contracts.filter(c => c.origin === loc.id || c.status === 'active').map(c => <article key={c.id}>
     <span className="eyebrow">{c.kind} / {c.status}</span><h3>{c.name}</h3>
@@ -354,7 +358,7 @@ export default function App() {
       <strong>{drill === 'emergency' ? p.rooms.every(r => r.fire === 0 && r.breach === 0) && p.systems.every(x => x.health === x.max) ? 'DRILL OBJECTIVE VERIFIED' : 'Recovery is not complete yet' : s.crew.every(c => c.home !== 'player' || c.shipId === 'player') ? 'DRILL OBJECTIVE VERIFIED' : 'Away team has not returned yet'}</strong>
       <button onClick={endDrill}>Return to expedition unchanged</button>
     </aside>}
-    {!started && panel === null && <div className="title-screen" role="dialog" aria-modal="true" aria-label="Main menu">
+    {!started && <div className="title-screen" role={panel === null ? 'dialog' : undefined} aria-modal={panel === null ? true : undefined} aria-label={panel === null ? 'Main menu' : undefined} aria-hidden={panel !== null} inert={panel !== null}>
       <img className="title-art" src={`${import.meta.env.BASE_URL}art/exploration-hero.png`} alt="The Wayfarer explores a blue planet and an ancient orbital ruin." />
       <section className="title-content"><h1>STAR<span>SHIP</span></h1><p className="title-subtitle">EXPEDITION COMMAND</p><p>Beyond the last charted star,<br />your crew’s story begins.</p>
         <nav aria-label="Main menu"><button className="primary" onClick={() => open('new')}>New Game <span aria-hidden="true">01</span></button><button onClick={() => open('load')}>Load Game <span aria-hidden="true">02</span></button><button onClick={() => open('settings')}>Settings <span aria-hidden="true">03</span></button><button onClick={() => open('about')}>About <span aria-hidden="true">04</span></button></nav>
@@ -391,10 +395,10 @@ export default function App() {
           })}</div>
           <p className="muted">FTL requires 30 powered seconds, working engines/cockpit and crew aboard. Safe speed accelerates safe charging, not combat. Unknown routes are revealed by scanning or purchased intelligence.</p>
         </> : <>
-          <div className="operation-buttons"><button onClick={() => send({ type: 'action', action: 'scan' })}>Active scan</button><button onClick={() => send({ type: 'action', action: 'probe' })}>Launch probe · 5 CR</button><button onClick={() => { open(null); api.paused = false; api.notify(); }}>Return to live simulation</button></div>
+          <div className="operation-buttons"><button disabled={!sensorWork} title={sensorWork ? undefined : 'All contacts identified and routes charted.'} onClick={() => send({ type: 'action', action: 'scan' })}>Active scan</button><button disabled={!sensorWork} title={sensorWork ? undefined : 'All contacts identified and routes charted.'} onClick={() => send({ type: 'action', action: 'probe' })}>Launch probe · 5 CR</button></div>
           <div className="contact-grid">{system.locations.filter(l => l.known > 0).map(l => <article id={`course-${l.id}`} key={l.id} className={`contact-card ${l.id === loc.id ? 'current' : ''} ${mapSelection === l.id ? 'selected' : ''}`}>
-            <span className={`contact-symbol ${l.kind}`}>{l.kind === 'planet' ? '◉' : l.kind === 'station' ? '⬡' : l.kind === 'pirate' ? '△' : l.kind === 'derelict' ? '▱' : '◇'}</span>
-            <div><span className="eyebrow">{l.known < 2 ? 'UNRESOLVED CONTACT' : l.kind.toUpperCase()}</span><h3>{l.known < 2 ? 'Unknown signature' : l.name}</h3><small>{l.surveyed ? 'SURVEY COMPLETE' : l.depleted ? 'EXHAUSTED' : `Identification ${l.known}/3`}</small></div>
+            <span className={`contact-symbol ${l.known < 2 ? 'unknown' : l.kind}`}>{l.known < 2 ? '◇' : l.kind === 'planet' ? '◉' : l.kind === 'station' ? '⬡' : l.kind === 'pirate' ? '△' : l.kind === 'derelict' ? '▱' : '◇'}</span>
+            <div>{l.known >= 2 && <span className="eyebrow">{l.kind.toUpperCase()}</span>}<h3>{l.known < 2 ? 'Unknown signature' : l.name}</h3>{(l.surveyed || l.depleted) && <small>{l.surveyed ? 'SURVEY COMPLETE' : 'EXHAUSTED'}</small>}</div>
             <button disabled={l.id === loc.id} onClick={() => { const result = api.dispatch({ type: 'travel', destination: l.id, system: false }); if(result.ok) { open(null); api.paused = false; api.notify(); } }}>{l.id === loc.id ? 'HERE' : 'SET COURSE'}</button>
           </article>)}</div>
         </>}
@@ -459,7 +463,7 @@ export default function App() {
         <p>Takes 100 powered-engine ticks. Approach affects attack bearing as well as defensive armor. Current commitment {p.maneuver} ticks.</p>
         <div className="operation-buttons">{(['bow', 'stern', 'port', 'starboard'] as const).map(bearing => <button key={bearing} onClick={() => send({ type: 'maneuver', bearing })}>Approach {bearing}</button>)}</div>
         <h2>Electronic warfare</h2>
-        <div className="operation-buttons">{(['jam', 'disrupt', 'interfere', 'hack', 'hijack', 'intercept'] as const).map(mode => <button key={mode} onClick={() => send({ type: 'ew', mode })}>{mode}</button>)}</div>
+        <div className="operation-buttons">{(['jam', 'disrupt', 'interfere', 'hack', 'hijack', 'intercept'] as const).map(mode => <button key={mode} disabled={mode === 'intercept' && !interceptWork} title={mode === 'intercept' && !interceptWork ? 'No new contact or transmission data remains in this system.' : undefined} onClick={() => send({ type: 'ew', mode })}>{mode}</button>)}</div>
         <h2>Doors and atmosphere</h2>
         <p>Exterior venting can endanger crew. Close doors, repair breaches, then restore oxygen. Locked doors block crew routing.</p>
         <div className="door-list">{inspected.doors.map(d => <div key={d.id}>
@@ -474,7 +478,7 @@ export default function App() {
         <div className="operation-buttons">{s.ships.filter(sh => sh.doctrine !== 'withdrawn').map(sh => sh.rooms.map((r, i) => <button key={`${sh.id}-${r.id}`} onClick={() => { roomClick(sh.id, r.id); open(null); }}>{sh.name}: {sh.id === 'player' || sh.doctrine === 'derelict' || enemyIntel ? `${r.name} · O₂ ${Math.round(r.oxygen * 100)}%` : `Unknown compartment ${i + 1}`}</button>))}</div>
       </>}
       {panel === 'journal' && <><div className="journal-objective"><span className="eyebrow">THE CARTOGRAPHER EXPEDITION</span><h2>{s.archive ? 'Return the final archive to Haven' : s.coordinates.length === 3 ? 'Reach Terminus and resolve the guardian' : 'Recover three independent archive coordinates'}</h2><p>Verdant: survey planet II or buy chart. Vesper: investigate Lost relay or buy chart. Nacre: search derelict compartments or buy chart. Required knowledge is permanent and cannot be sold.</p><div className="coordinate-row">{['s2', 's4', 's5'].map(id => <span key={id} className={s.coordinates.includes(id) ? 'obtained' : ''}>{s.coordinates.includes(id) ? '✓' : '◇'} {s.region.find(r => r.id === id)?.name}</span>)}</div></div>{summary}<h2>Market intelligence</h2><p>Snapshots are last-known, not live remote prices. Buy updated intelligence at a station.</p><div className="service-grid">{s.markets.filter(m => m.observed >= 0).map(m => <article key={m.id}><b>{s.region.flatMap(r => r.locations).find(l => l.id === m.id)?.name}</b><small>Observed at tick {m.observed} · Age {Math.floor((s.tick - m.observed) / 20)} sec · {m.event}</small><p>{Object.entries(m.prices).map(([key, v]) => `${key} ${v}`).join(' / ')}</p></article>)}</div><h2>Ship log</h2><ol className="journal-log">{s.events.slice().reverse().map(e => <li key={e.id}><time>T+{(e.tick / 20).toFixed(1)}s</time><span>{e.message}</span></li>)}</ol></>}
-      {panel === 'load' && <SavedGames library={library} error={libraryError} disabled={api.training} load={loadRun} downloadBackup={() => downloadRecovery()} importGame={importGame} importBackup={async file => {
+      {panel === 'load' && <SavedGames library={library} error={libraryError} disabled={api.training} load={loadRun} newGame={() => open('new')} downloadBackup={() => downloadRecovery()} importGame={importGame} importBackup={async file => {
         try {
           if (api.training) throw new Error('Return from the drill before importing a backup.');
           if (file.size > 16777216) throw new Error('Recovery backup exceeds 16 MiB.');
@@ -496,7 +500,9 @@ export default function App() {
           <label>Effects volume<input type="range" min="0" max="0.4" step="0.01" defaultValue="0.15" onChange={e => audio.current.volume = Number(e.target.value)} /></label>
         </article>
         {started && <><article><h2>Run control</h2><p>Starting another expedition keeps this one. Crew, credits and archive progress stay with their own expedition.</p><button disabled={api.training} onClick={() => open('new')}>New expedition</button>
-          <button disabled={api.training} onClick={() => transition(() => { setStarted(false); setPanel(null); })}>Return to main menu</button>
+          <button disabled={api.training} onClick={() => {
+            if (api.persist().ok) transition(() => { setStarted(false); setPanel(null); });
+          }}>Return to main menu</button>
           <button className="danger" onClick={() => setConfirm({ text: 'Abandon this expedition? This is a distinct, final ending and will be persisted. No funds carry over.', command: { type: 'abandon', confirm: true } })}>Abandon expedition</button></article>
           <article><h2>Distress recovery</h2><p>Tow to Haven: 40 CR/debt. Deep-space beacon: 75 CR/debt and loose cargo lost; one use. Repairs are minimum only. Recall away crew first.</p><button onClick={() => setConfirm({ text: 'Confirm distress tow: serviced space 40 CR/debt; isolated space 75 and cargo forfeited, one beacon. Minimum fuel/navigation restoration, no free full repair.', command: { type: 'service', service: 'rescue' } })}>Request rescue</button></article></>}
       </div>}
@@ -505,7 +511,7 @@ export default function App() {
       {panel === 'help' && <p>Combat counterplay: disabling enemy Weapons limits return fire; disabling Engines denies a charged retreat. A fleeing bounty target is not a kill. Ion damage removes power allocations: when the lock expires, use available reactor power to restore them explicitly. Extinguish fire before committing injured crew to prolonged repair.</p>}
       {(panel === 'settings' || panel === 'load') && DIAGNOSTICS_ENABLED && <section className="developer-diagnostics"><h2>Developer diagnostics</h2>{panel === 'settings' && <label><input type="checkbox" checked={diagnostics} onChange={e => setDiagnostics(e.target.checked)} /> Show graphics diagnostics / frame rate</label>}<button onClick={() => downloadRecovery(true)}>Export recovery diagnostics</button></section>}
       {panel === 'journal' && <><h2>Discovery records</h2><div className="service-grid">{s.discoveries.map(id => <article key={id}><b>{discoveryKind(s, id).toUpperCase()} SURVEY</b><p>{s.region.flatMap(r => r.locations).find(l => l.id === id)?.name ?? id}</p><small>{s.soldData.includes(id) ? 'SOLD · Knowledge retained' : `${SURVEY_VALUES[discoveryKind(s, id)]} CR exchange value`}</small></article>)}</div></>}
-      {panel !== 'about' && (panel !== 'load' || api.message) && <div className="dialog-footer" role="status">{api.message || 'Interaction pause active. Close this panel to return to the prior pause state.'}</div>}
+      {panel !== 'about' && (api.message || (started && panel !== 'load')) && <div className="dialog-footer" role="status">{api.message || 'Interaction pause active. Close this panel to return to the prior pause state.'}</div>}
     </section></div>}
     {confirm && <div className="modal-backdrop confirm-backdrop"><section className="confirm-dialog frame" role="alertdialog" aria-modal="true" aria-label="Confirm command"><h2>Confirm captain’s order</h2><p>{confirm.text}</p><button className="primary" onClick={() => { const result = send(confirm.command); if(result.ok && confirm.command.type === 'travel') { open(null); api.paused = false; api.notify(); } setConfirm(null); }}>Confirm</button><button onClick={() => setConfirm(null)}>Cancel</button></section></div>}
     {debrief && started && <div className="modal-backdrop"><section className="debrief frame" role="dialog" aria-modal="true" aria-label="Expedition debrief"><span className="eyebrow">EXPEDITION DEBRIEF</span><h1>{s.phase === 'victory' ? 'THE ARCHIVE IS HOME' : s.phase === 'defeat' ? 'SIGNAL LOST' : 'JOURNEY ENDED'}</h1><p>{s.phase === 'victory' ? 'Your choices carried the Wayfarer through the frontier. The Cartographer’s knowledge belongs to the living again.' : s.phase === 'defeat' ? 'The ship or crew could not be recovered. Every expedition leaves a story.' : 'The captain ordered an end to the expedition. Your discoveries remain in this run’s journal.'}</p>{summary}{api.saveIssue && <p className="warning" role="alert">This ending could not be saved and verified. Export the expedition record below before leaving; other expeditions and earlier recovery copies were kept.</p>}<button onClick={download}>Export expedition record</button><button className="primary" onClick={() => open('new')}>Plan another expedition</button></section></div>}

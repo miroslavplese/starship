@@ -1,7 +1,7 @@
 import { COMPARTMENT_OUTCOMES, MISSION_BRIEFINGS, recorderKey } from '../content/expedition';
 import { cargoUsed } from '../content/region';
 import { createCrew, createShip } from '../content/ships';
-import { currentSystem, event, income, player } from './core';
+import { currentSystem, event, income, pendingIntercepts, player } from './core';
 import type { Command, Contract, GameState, Result, Ship } from './types';
 
 const ok: Result = { ok: true };
@@ -190,7 +190,7 @@ export function missionArrival(state: GameState, locationId: string): void {
 /** Call only after a successful EW intercept command, not after purchasing a code. */
 export function missionIntercept(state: GameState): void {
   state.code = true;
-  for (const contract of active(state).filter(candidate => candidate.kind === 'investigation' && !candidate.investigationIntercepted && currentSystem(state).locations.some(location => location.id === candidate.destination))) {
+  for (const contract of pendingIntercepts(state)) {
     contract.investigationIntercepted = true;
     event(state, 'contract', `${contract.name}: intercepted cipher identifies ${contract.investigationRelay ?? contract.destination}. Investigate that relay to corroborate it.`);
   }

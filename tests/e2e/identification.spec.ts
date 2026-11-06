@@ -1,0 +1,84 @@
+import { readFile, writeFile } from 'node:fs/promises';
+import { expect, test, type Page } from '@playwright/test';
+import { encode } from '../../src/game/persistence';
+import { createGame } from '../../src/sim/game';
+import type { GameState } from '../../src/sim/types';
+import { beginExpedition, closeDialog, continueExpedition, savedLibraryBytes } from './journeys';
+
+async function downloadRun(page: Page): Promise<GameState> {
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  const pending = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download save file', exact: true }).click();
+  const file = await pending, path = await file.path();
+  if (!path) throw new Error('Current expedition download was unavailable.');
+  const state = JSON.parse(JSON.parse(await readFile(path, 'utf8')).payload);
+  await closeDialog(page); return state;
+}
+
+test('one probe identifies contacts without numeric tiers and a redundant paid repeat cannot start or charge', async ({ page }, info) => {
+  await page.goto('/'); await beginExpedition(page);
+  await page.getByRole('button', { name: 'Skip introduction', exact: true }).click();
+  await page.getByRole('button', { name: 'NAVIGATION', exact: true }).click();
+  await expect(page.locator('.contact-grid')).not.toContainText('Identification');
+  await expect(page.locator('#course-s0-signal0')).toHaveCount(0);
+  await expect(page.locator('#course-s0-planet1 h3')).toHaveText('Unknown signature');
+  await expect(page.locator('#course-s0-planet1 .eyebrow')).toHaveCount(0);
+  await expect(page.locator('#course-s0-planet1 .contact-symbol')).toHaveClass(/unknown/);
+  await page.getByRole('button', { name: 'Launch probe · 5 CR', exact: true }).click();
+  await closeDialog(page);
+  await page.getByRole('button', { name: /RESUME/ }).click();
+  await expect(page.locator('.operation-banner')).toHaveCount(0, { timeout: 90000 });
+  await page.locator('.pause-stack .pause-button').click();
+  const before = await downloadRun(page), stored = await savedLibraryBytes(page);
+  expect(before.ships[0].credits).toBe(55);
+  expect(before.region[0].locations.every(location => location.known === 2)).toBe(true);
+  expect(before.discoveries.filter(id => id === 'route:s0')).toHaveLength(1);
+  await page.getByRole('button', { name: 'NAVIGATION', exact: true }).click();
+  await expect(page.locator('.contact-grid')).not.toContainText('Identification');
+  await expect(page.locator('.contact-grid')).not.toContainText('Unknown signature');
+  const probe = page.getByRole('button', { name: 'Launch probe · 5 CR', exact: true });
+  await expect(probe).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Active scan', exact: true })).toBeDisabled();
+  const box = (await probe.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.screenshot({ path: info.outputPath('identified-contacts-no-redundant-probe.png') });
+  await closeDialog(page);
+  const after = await downloadRun(page);
+  expect(after).toEqual(before); expect(await savedLibraryBytes(page)).toEqual(stored);
+  await writeFile(info.outputPath('before-redundant-probe.json'), JSON.stringify(before));
+  await writeFile(info.outputPath('after-redundant-probe.json'), JSON.stringify(after));
+});
+
+test('legacy identified contacts retain source bytes and earned data while unearned route discovery still works', async ({ page }, info) => {
+  const legacy = createGame(12345);
+  legacy.region[0].locations.forEach(location => { location.known = 3; });
+  legacy.discoveries = legacy.region[0].locations.map(location => `intercept:${location.id}`);
+  legacy.soldData = ['intercept:s0-station']; legacy.rewards = ['approach:s0-signal0']; legacy.code = true;
+  legacy.ships[0].modules.push('ew'); legacy.ships[0].systems.find(system => system.kind === 'ew')!.power = 1;
+  const source = JSON.stringify(JSON.parse(encode(legacy)), null, 2);
+  await page.addInitScript(bytes => localStorage.setItem('starship.save.v1', bytes), source);
+  await page.goto('/'); await continueExpedition(page);
+  expect(await downloadRun(page)).toEqual(legacy);
+  await page.getByRole('button', { name: 'SHIP', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'intercept', exact: true })).toBeDisabled();
+  await closeDialog(page);
+  await page.getByRole('button', { name: 'NAVIGATION', exact: true }).click();
+  await expect(page.locator('.contact-grid')).not.toContainText('Identification');
+  await expect(page.locator('.contact-grid')).not.toContainText('Unknown signature');
+  await expect(page.getByRole('button', { name: 'Active scan', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Launch probe · 5 CR', exact: true })).toBeEnabled();
+  await page.screenshot({ path: info.outputPath('legacy-identified-unearned-route.png') });
+  await page.getByRole('button', { name: 'Active scan', exact: true }).click();
+  await closeDialog(page);
+  await page.getByRole('button', { name: /RESUME/ }).click();
+  await expect(page.locator('.operation-banner')).toHaveCount(0, { timeout: 90000 });
+  await page.locator('.pause-stack .pause-button').click();
+  const after = await downloadRun(page);
+  expect(after.region[0].locations.every(location => location.known === 3)).toBe(true);
+  expect(after.discoveries).toEqual([...legacy.discoveries, 'route:s0']);
+  expect(after.soldData).toEqual(legacy.soldData); expect(after.rewards).toEqual(legacy.rewards);
+  expect(after.ships[0].credits).toBe(legacy.ships[0].credits);
+  expect(await page.evaluate(() => localStorage.getItem('starship.save.v1'))).toBe(source);
+  await page.getByRole('button', { name: 'NAVIGATION', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Launch probe · 5 CR', exact: true })).toBeDisabled();
+});

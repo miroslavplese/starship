@@ -41,14 +41,14 @@ export function generateRegion(seed: number): { region: StarSystem[]; markets: M
     economy: economies[(i + seed % 6) % 6], known: i < 6,
     routes: [...(i > 0 ? [`s${i - 1}`] : []), ...(i < 7 ? [`s${i + 1}`] : []), ...(i === 0 ? ['s3'] : i === 3 ? ['s0', 's6'] : i === 6 ? ['s3'] : [])],
     locations: [
-      { id: `s${i}-station`, name: i === 0 ? 'Haven Anchorage' : `${name} Exchange`, kind: 'station', known: 3, surveyed: false, depleted: false, archive: false, deposit: 0 },
+      { id: `s${i}-station`, name: i === 0 ? 'Haven Anchorage' : `${name} Exchange`, kind: 'station', known: 2, surveyed: false, depleted: false, archive: false, deposit: 0 },
       { id: `s${i}-outpost`, name: `${name} Research Outpost`, kind: 'station', known: 2, surveyed: false, depleted: false, archive: false, deposit: 0 },
       ...[0, 1, 2].map(n => ({ id: `s${i}-planet${n}`, name: `${name} ${['I', 'II', 'III'][n]}`, kind: 'planet' as const, known: n === 0 ? 2 : 1, surveyed: false, depleted: false, archive: i === 2 && n === 1, deposit: 0 })),
       { id: `s${i}-belt`, name: `${name} Shattered Belt`, kind: 'belt', known: 2, surveyed: false, depleted: false, archive: false, deposit: 8 + seed % 5 },
       ...[0, 1, 2].map(n => ({ id: `s${i}-signal${n}`, name: ['Echoing anomaly', 'Lost relay', 'Hidden installation'][n], kind: 'signal' as const, known: 0, surveyed: false, depleted: false, archive: i === 4 && n === 1, deposit: 0 })),
       { id: `s${i}-wreck`, name: `Derelict ${name} Surveyor`, kind: 'derelict', known: 1, surveyed: false, depleted: false, archive: i === 5, deposit: 0 },
       { id: `s${i}-pirate`, name: `Raider ${['Kestrel', 'Shrike', 'Vulture'][i % 3]}`, kind: 'pirate', known: 1, surveyed: false, depleted: false, archive: false, deposit: 0 },
-      ...(i === 7 ? [{ id: 's7-beacon', name: 'The Cartographer Beacon', kind: 'beacon' as const, known: 3, surveyed: false, depleted: false, archive: false, deposit: 0 }] : []),
+      ...(i === 7 ? [{ id: 's7-beacon', name: 'The Cartographer Beacon', kind: 'beacon' as const, known: 2, surveyed: false, depleted: false, archive: false, deposit: 0 }] : []),
     ],
   }));
   for (let i = 1; i < region.length - 2; i++) {

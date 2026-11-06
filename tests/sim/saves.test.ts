@@ -21,6 +21,21 @@ function legacy(storage: Storage) {
 }
 
 describe('independent saved expeditions', () => {
+  it('loads legacy identified contacts without normalizing source bytes or losing earned data', () => {
+    const storage = memoryStorage(), state = createGame(12345);
+    state.region[0].locations.forEach(location => { location.known = 3; });
+    state.discoveries.push('route:s0', 'intercept:s0-station');
+    state.soldData.push('route:s0'); state.rewards.push('approach:s0-signal0');
+    const source = JSON.stringify(JSON.parse(encode(state)), null, 2);
+    storage.setItem(SAVE_KEY, source);
+    const api = new GameController(9, storage);
+    expect(api.load(SAVE_KEY).ok).toBe(true);
+    expect(api.state).toEqual(state); expect(storage.getItem(SAVE_KEY)).toBe(source);
+    expect(api.persist().ok).toBe(true);
+    expect(api.state).toEqual(state); expect(storage.getItem(SAVE_KEY)).toBe(source);
+    expect(decode(readSaveLibrary(storage).saves[0].snapshot)).toEqual(state);
+    expect(readSaveLibrary(storage).backups.some(entry => entry.snapshot === source)).toBe(true);
+  });
   it('browses empty and legacy saves without writing or inventing saved times', () => {
     const storage = memoryStorage();
     expect(readSaveLibrary(storage)).toEqual({ saves: [], backups: [], issues: [] });

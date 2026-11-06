@@ -1,8 +1,8 @@
 import type { SavedExpedition, SaveLibrary } from '../game/saves';
 
-export default function SavedGames({ library, error, disabled, load, importGame, importBackup, downloadBackup }: {
+export default function SavedGames({ library, error, disabled, load, newGame, importGame, importBackup, downloadBackup }: {
   library: SaveLibrary; error: string; disabled: boolean;
-  load: (key: string) => void; importGame: (file: File) => Promise<void>;
+  load: (key: string) => void; newGame: () => void; importGame: (file: File) => Promise<void>;
   importBackup: (file: File) => Promise<void>; downloadBackup: () => void;
 }) {
   const card = (entry: SavedExpedition) => {
@@ -27,7 +27,7 @@ export default function SavedGames({ library, error, disabled, load, importGame,
     {disabled && <p className="warning">Return from the practice drill before loading or importing an expedition.</p>}
     {error && <p className="error-text" role="alert">{error}</p>}
     {library.issues.length > 0 && <p className="warning">Some saved data could not be read. Other saves are available below; open Backups and damaged-save recovery for earlier checkpoints and a backup download. No damaged files have been removed.</p>}
-    {!library.saves.length && !error && <p className="empty-saves">{library.issues.length ? 'No readable saved expeditions. Check recovery below or import a save file.' : 'No saved expeditions yet. Start a New Game or import a save file below.'}</p>}
+    {!library.saves.length && !error && <><p className="empty-saves">{library.issues.length ? 'No readable saved expeditions. Check recovery below or import a save file.' : 'No saved expeditions yet. Start a New Game or import a save file below.'}</p><button disabled={disabled} onClick={newGame}>New Game</button></>}
     <div className="saved-list">{library.saves.map(card)}</div>
     <label className="file-input">Import expedition<input type="file" disabled={disabled} accept=".json,application/json" onChange={async event => { const file = event.target.files?.[0]; event.target.value = ''; if (file) await importGame(file); }} /></label>
     <small>Accepts an expedition save or recovery backup file. Imports keep your existing expeditions.</small>

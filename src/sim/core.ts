@@ -32,6 +32,28 @@ export function currentLocation(state: GameState) {
   return location;
 }
 
+export function hasSensorWork(state: GameState): boolean {
+  const system = currentSystem(state);
+  return system.locations.some(location => location.known < 2)
+    || system.routes.some(id => !state.region.find(candidate => candidate.id === id)?.known)
+    || !state.discoveries.includes(`route:${system.id}`);
+}
+
+export function interceptTarget(state: GameState) {
+  return [...currentSystem(state).locations].sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+    .find(location => location.known < 2 || !state.discoveries.includes(`intercept:${location.id}`));
+}
+
+export function pendingIntercepts(state: GameState) {
+  const system = currentSystem(state);
+  return state.contracts.filter(contract => contract.status === 'active' && contract.kind === 'investigation'
+    && !contract.investigationIntercepted && system.locations.some(location => location.id === contract.destination));
+}
+
+export function hasInterceptWork(state: GameState): boolean {
+  return Boolean(interceptTarget(state) || !state.code || pendingIntercepts(state).length);
+}
+
 export function income(state: GameState, amount: number): void {
   if (!Number.isFinite(amount) || amount < 0) throw new Error('Income must be finite and nonnegative');
   const ship = player(state);

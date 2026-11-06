@@ -17,10 +17,11 @@ export function useScreenTransition(reducedMotion: boolean) {
       ?? (opener?.isConnected ? opener : document.querySelector<HTMLElement>('.pause-button'));
     target?.focus();
   });
-  const transition = (change: () => void) => {
+  const transition = (change: () => void, { fade = true }: { fade?: boolean } = {}) => {
     if (locked.current) return;
-    locked.current = true;
     pendingFocus.current = { opener: document.activeElement instanceof HTMLElement ? document.activeElement : null };
+    if (!fade) { change(); return; }
+    locked.current = true;
     setPhase('out');
     const duration = reducedMotion ? 0 : 160;
     timers.current = [setTimeout(() => {
